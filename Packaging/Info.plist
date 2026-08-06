@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>CFBundleDevelopmentRegion</key>
+    <string>zh_CN</string>
+    <key>CFBundleDisplayName</key>
+    <string>vRemote</string>
+    <key>CFBundleExecutable</key>
+    <string>vRemote</string>
+    <key>CFBundleIdentifier</key>
+    <string>local.simaqingfeng.vRemote</string>
+    <key>CFBundleInfoDictionaryVersion</key>
+    <string>6.0</string>
+    <key>CFBundleName</key>
+    <string>vRemote</string>
+    <key>CFBundlePackageType</key>
+    <string>APPL</string>
+    <key>CFBundleShortVersionString</key>
+    <string>1.0.0-beta.1</string>
+    <key>CFBundleVersion</key>
+    <string>1</string>
+    <key>LSMinimumSystemVersion</key>
+    <string>12.0</string>
+    <key>LSUIElement</key>
+    <true/>
+    <key>NSBluetoothAlwaysUsageDescription</key>
+    <string>连接 X6 蓝牙语音遥控器并接收语音音频。</string>
+    <key>NSBluetoothPeripheralUsageDescription</key>
+    <string>连接 X6 蓝牙语音遥控器并接收语音音频。</string>
+    <key>NSMicrophoneUsageDescription</key>
+    <string>同时使用 X6 遥控器和 MacBook 麦克风进行语音输入。</string>
+    <key>NSInputMonitoringUsageDescription</key>
+    <string>识别 X6 语音键并阻止其原生搜索动作干扰语音输入。</string>
+    <key>NSHighResolutionCapable</key>
+    <true/>
+</dict>
+</plist>
