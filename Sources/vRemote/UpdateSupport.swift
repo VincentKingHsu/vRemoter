@@ -254,8 +254,8 @@ private final class UpdateWindowModel: ObservableObject {
                     ))
                 } else {
                     dialog = .failure(L10n.text(
-                        "无法连接 GitHub，请检查网络后重试。",
-                        "Could not reach GitHub. Check your connection and try again."
+                        "无法连接更新服务器，请检查网络后重试。",
+                        "Could not reach the update server. Check your connection and try again."
                     ))
                 }
             }

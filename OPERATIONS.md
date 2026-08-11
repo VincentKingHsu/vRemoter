@@ -30,7 +30,8 @@ Spaceship DNS
 - `https://vremoter.vincentstudio.org/` 已在马来西亚服务器通过 Caddy 提供服务。
 - `https://updates.vincentstudio.org/vremoter/`、`releases.json` 与 `commerce.json` 已通过公网 HTTPS 和 CORS 验证。
 - TLS 证书由 Caddy 自动申请和续期；首次证书为 Let's Encrypt。
-- 当前 `releases.json` 保持 `draft: true`、`assets: []`，因此没有公开任何未签名 PKG/DMG。
+- 当前首发版只公开 `vRemoter-1.0.0.pkg`，页面没有 DMG；只有未来真正发布 APP-only 更新时才增加 DMG。
+- 当前 PKG 尚未完成 Developer ID 签名与公证，下载页必须保留明确提示；完成签名、公证和实机验证后再替换同版本文件或发布新版本。
 - Spaceship 的根域名 A 记录仍指向上海服务器；本次只新增了 `vremoter` 和 `updates`，两者指向 `47.250.150.45`。
 - GitHub 草稿 PR：`VincentKingHsu/vRemoter#1`，分支为 `agent/private-self-hosted-release`。
 
