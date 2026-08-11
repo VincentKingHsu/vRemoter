@@ -13,6 +13,11 @@ enum AppStorage {
 
     static let logFile = logsDirectory.appendingPathComponent("vRemote.log")
 
+    static let applicationSupportDirectory: URL = {
+        FileManager.default.homeDirectoryForCurrentUser
+            .appendingPathComponent("Library/Application Support/vRemote", isDirectory: true)
+    }()
+
     static let recordingsDirectory: URL = {
         FileManager.default.homeDirectoryForCurrentUser
             .appendingPathComponent(
@@ -29,6 +34,7 @@ enum AppStorage {
             remoteInputEnabledKey: true,
         ])
         ensureDirectory(logsDirectory)
+        ensureDirectory(applicationSupportDirectory)
         ensureDirectory(recordingsDirectory)
 
         // vRemote has its own storage namespace and never touches V1 data.

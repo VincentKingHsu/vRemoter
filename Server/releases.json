@@ -1,0 +1,13 @@
+[
+  {
+    "id": 1000000,
+    "tag_name": "v1.0.0",
+    "name": "vRemoter 1.0",
+    "body": "首次公开版本。首次安装请使用 PKG，安装包包含 vRemoter APP 与音频驱动。",
+    "html_url": "https://updates.vincentstudio.org/vremoter/",
+    "draft": true,
+    "prerelease": false,
+    "driver_update_required": true,
+    "assets": []
+  }
+]
