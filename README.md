@@ -8,6 +8,14 @@ vRemoter 把 X6 双模语音遥控器变成 macOS 上的 Vibe Coding 控制器�
 
 当前版本：`1.0.1`
 
+## 支持开发
+
+vRemoter 免费提供。如果它帮你省下了一点时间，欢迎请我喝杯咖啡，补充一点开发和 Token 费用。谢谢支持 🙏
+
+| 微信 / WeChat | 支付宝 / Alipay | PayPal |
+|---|---|---|
+| <img src="docs/assets/donate/wechat.JPG" alt="微信打赏二维码" width="220"> | <img src="docs/assets/donate/alipay.JPG" alt="支付宝打赏二维码" width="220"> | <img src="docs/assets/donate/paypal.JPG" alt="PayPal donation QR code" width="220"> |
+
 ## 仓库与公开服务边界
 
 | 内容 | 位置 | 是否公开 |
