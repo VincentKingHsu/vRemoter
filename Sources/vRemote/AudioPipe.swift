@@ -169,6 +169,7 @@ final class AudioPipe: NSObject, AVCaptureAudioDataOutputSampleBufferDelegate {
 
     var isMacInputEnabled: Bool { inputState.macEnabled }
     var isRemoteInputEnabled: Bool { inputState.remoteEnabled }
+    var isOutputDeviceAvailable: Bool { outputDeviceID != nil }
 
     func stop() {
         diagnosticsTimer?.invalidate()

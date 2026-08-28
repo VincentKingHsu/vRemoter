@@ -1,0 +1,152 @@
+<svg width="1280" height="800" viewBox="0 0 1280 800" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="160%">
+      <feDropShadow dx="0" dy="10" stdDeviation="14" flood-color="#000000" flood-opacity="0.22"/>
+    </filter>
+    <g id="mark-dark">
+      <rect x="1" y="1" width="218" height="218" rx="51" fill="#0E0F11" stroke="#2A2D32" stroke-width="2"/>
+      <g transform="translate(-19.8 -19.8) scale(1.18)">
+      <path d="M95 124Q110 121.19 125 124" stroke="#4FD187" stroke-opacity=".98" stroke-width="8" stroke-linecap="round"/>
+      <path d="M86 108Q110 100.8 134 108" stroke="#4FD187" stroke-opacity=".80" stroke-width="8" stroke-linecap="round"/>
+      <path d="M72 92Q110 73.95 148 92" stroke="#4FD187" stroke-opacity=".62" stroke-width="8" stroke-linecap="round"/>
+      <path d="M86 76Q110 68.8 134 76" stroke="#4FD187" stroke-opacity=".44" stroke-width="8" stroke-linecap="round"/>
+      <path d="M95 60Q110 57.19 125 60" stroke="#4FD187" stroke-opacity=".28" stroke-width="8" stroke-linecap="round"/>
+      <path d="M146.65 128L110 168" stroke="#C7D1D6" stroke-width="20" stroke-linecap="round"/>
+      <path d="M73.35 128L110 168" stroke="#7F8A92" stroke-width="22" stroke-linecap="round"/>
+      <path d="M73.35 128L110 168" stroke="#C7D1D6" stroke-width="20" stroke-linecap="round"/>
+      <circle cx="78.85" cy="134" r="5" fill="none" stroke="#0E0F11" stroke-width="2"/>
+      <rect x="91.47" y="143" width="5" height="15" rx="2.5" fill="#0E0F11" transform="rotate(-42.5 93.97 150.5)"/>
+      <circle cx="141.15" cy="134" r="5" fill="none" stroke="#0E0F11" stroke-width="2"/>
+      <rect x="123.53" y="143" width="5" height="15" rx="2.5" fill="#0E0F11" transform="rotate(42.5 126.03 150.5)"/>
+      </g>
+    </g>
+    <g id="mark-light">
+      <rect x="1" y="1" width="218" height="218" rx="51" fill="#FFFFFF" stroke="#D7DAE0" stroke-width="2"/>
+      <g transform="translate(-19.8 -19.8) scale(1.18)">
+      <path d="M95 124Q110 121.19 125 124" stroke="#4FD187" stroke-opacity=".98" stroke-width="8" stroke-linecap="round"/>
+      <path d="M86 108Q110 100.8 134 108" stroke="#4FD187" stroke-opacity=".80" stroke-width="8" stroke-linecap="round"/>
+      <path d="M72 92Q110 73.95 148 92" stroke="#4FD187" stroke-opacity=".62" stroke-width="8" stroke-linecap="round"/>
+      <path d="M86 76Q110 68.8 134 76" stroke="#4FD187" stroke-opacity=".44" stroke-width="8" stroke-linecap="round"/>
+      <path d="M95 60Q110 57.19 125 60" stroke="#4FD187" stroke-opacity=".28" stroke-width="8" stroke-linecap="round"/>
+      <path d="M146.65 128L110 168" stroke="#20252A" stroke-width="20" stroke-linecap="round"/>
+      <path d="M73.35 128L110 168" stroke="#5A646C" stroke-width="22" stroke-linecap="round"/>
+      <path d="M73.35 128L110 168" stroke="#20252A" stroke-width="20" stroke-linecap="round"/>
+      <circle cx="78.85" cy="134" r="5" fill="none" stroke="#FFFFFF" stroke-width="2"/>
+      <rect x="91.47" y="143" width="5" height="15" rx="2.5" fill="#FFFFFF" transform="rotate(-42.5 93.97 150.5)"/>
+      <circle cx="141.15" cy="134" r="5" fill="none" stroke="#FFFFFF" stroke-width="2"/>
+      <rect x="123.53" y="143" width="5" height="15" rx="2.5" fill="#FFFFFF" transform="rotate(42.5 126.03 150.5)"/>
+      </g>
+    </g>
+    <g id="mark-mono">
+      <rect x="1" y="1" width="218" height="218" rx="51" fill="#0E0F11" stroke="#2A2D32" stroke-width="2"/>
+      <g transform="translate(-19.8 -19.8) scale(1.18)">
+      <path d="M95 124Q110 121.19 125 124" stroke="#F3F5F6" stroke-opacity=".98" stroke-width="8" stroke-linecap="round"/>
+      <path d="M86 108Q110 100.8 134 108" stroke="#F3F5F6" stroke-opacity=".80" stroke-width="8" stroke-linecap="round"/>
+      <path d="M72 92Q110 73.95 148 92" stroke="#F3F5F6" stroke-opacity=".62" stroke-width="8" stroke-linecap="round"/>
+      <path d="M86 76Q110 68.8 134 76" stroke="#F3F5F6" stroke-opacity=".44" stroke-width="8" stroke-linecap="round"/>
+      <path d="M95 60Q110 57.19 125 60" stroke="#F3F5F6" stroke-opacity=".28" stroke-width="8" stroke-linecap="round"/>
+      <path d="M146.65 128L110 168" stroke="#F3F5F6" stroke-width="20" stroke-linecap="round"/>
+      <path d="M73.35 128L110 168" stroke="#0E0F11" stroke-width="22" stroke-linecap="round"/>
+      <path d="M73.35 128L110 168" stroke="#F3F5F6" stroke-width="20" stroke-linecap="round"/>
+      <circle cx="78.85" cy="134" r="5" fill="none" stroke="#0E0F11" stroke-width="2"/>
+      <rect x="91.47" y="143" width="5" height="15" rx="2.5" fill="#0E0F11" transform="rotate(-42.5 93.97 150.5)"/>
+      <circle cx="141.15" cy="134" r="5" fill="none" stroke="#0E0F11" stroke-width="2"/>
+      <rect x="123.53" y="143" width="5" height="15" rx="2.5" fill="#0E0F11" transform="rotate(42.5 126.03 150.5)"/>
+      </g>
+    </g>
+    <g id="mark-dark-compact">
+      <rect x="1" y="1" width="218" height="218" rx="51" fill="#0E0F11" stroke="#2A2D32" stroke-width="2"/>
+      <g transform="translate(-19.8 -19.8) scale(1.18)">
+      <path d="M86 108Q110 100.8 134 108" stroke="#4FD187" stroke-opacity=".96" stroke-width="9" stroke-linecap="round"/>
+      <path d="M72 92Q110 73.95 148 92" stroke="#4FD187" stroke-opacity=".62" stroke-width="9" stroke-linecap="round"/>
+      <path d="M86 76Q110 68.8 134 76" stroke="#4FD187" stroke-opacity=".34" stroke-width="9" stroke-linecap="round"/>
+      <path d="M146.65 128L110 168" stroke="#C7D1D6" stroke-width="20" stroke-linecap="round"/>
+      <path d="M73.35 128L110 168" stroke="#7F8A92" stroke-width="22" stroke-linecap="round"/>
+      <path d="M73.35 128L110 168" stroke="#C7D1D6" stroke-width="20" stroke-linecap="round"/>
+      </g>
+    </g>
+    <g id="mark-dark-medium">
+      <rect x="1" y="1" width="218" height="218" rx="51" fill="#0E0F11" stroke="#2A2D32" stroke-width="2"/>
+      <g transform="translate(-19.8 -19.8) scale(1.18)">
+      <path d="M86 108Q110 100.8 134 108" stroke="#4FD187" stroke-opacity=".96" stroke-width="9" stroke-linecap="round"/>
+      <path d="M72 92Q110 73.95 148 92" stroke="#4FD187" stroke-opacity=".62" stroke-width="9" stroke-linecap="round"/>
+      <path d="M86 76Q110 68.8 134 76" stroke="#4FD187" stroke-opacity=".34" stroke-width="9" stroke-linecap="round"/>
+      <path d="M146.65 128L110 168" stroke="#C7D1D6" stroke-width="20" stroke-linecap="round"/>
+      <path d="M73.35 128L110 168" stroke="#7F8A92" stroke-width="22" stroke-linecap="round"/>
+      <path d="M73.35 128L110 168" stroke="#C7D1D6" stroke-width="20" stroke-linecap="round"/>
+      <circle cx="78.85" cy="134" r="5" fill="none" stroke="#0E0F11" stroke-width="2"/>
+      <rect x="91.47" y="143" width="5" height="15" rx="2.5" fill="#0E0F11" transform="rotate(-42.5 93.97 150.5)"/>
+      <circle cx="141.15" cy="134" r="5" fill="none" stroke="#0E0F11" stroke-width="2"/>
+      <rect x="123.53" y="143" width="5" height="15" rx="2.5" fill="#0E0F11" transform="rotate(42.5 126.03 150.5)"/>
+      </g>
+    </g>
+    <g id="mark-dark-micro">
+      <rect x="1" y="1" width="218" height="218" rx="51" fill="#0E0F11" stroke="#2A2D32" stroke-width="2"/>
+      <g transform="translate(-19.8 -19.8) scale(1.18)">
+      <path d="M86 108Q110 100.8 134 108" stroke="#4FD187" stroke-opacity=".94" stroke-width="11" stroke-linecap="round"/>
+      <path d="M72 92Q110 73.95 148 92" stroke="#4FD187" stroke-opacity=".46" stroke-width="11" stroke-linecap="round"/>
+      <path d="M146.65 128L110 168" stroke="#C7D1D6" stroke-width="20" stroke-linecap="round"/>
+      <path d="M73.35 128L110 168" stroke="#7F8A92" stroke-width="22" stroke-linecap="round"/>
+      <path d="M73.35 128L110 168" stroke="#C7D1D6" stroke-width="20" stroke-linecap="round"/>
+      </g>
+    </g>
+  </defs>
+
+  <rect width="1280" height="800" rx="28" fill="#ECEDEF"/>
+  <text x="40" y="53" fill="#14171C" font-family="Inter, Arial, sans-serif" font-size="25" font-weight="600">vRemoter · Logo</text>
+  <text x="40" y="80" fill="#636872" font-family="Inter, Arial, sans-serif" font-size="12">双遥控器组成 V · 分层波纹形成立式麦克风与发射意象</text>
+
+  <g filter="url(#shadow)">
+    <rect x="40" y="118" width="744" height="346" rx="18" fill="#0E0F11" stroke="#383B40"/>
+  </g>
+  <g transform="translate(96 194) scale(.58)"><use href="#mark-dark"/></g>
+  <text x="250" y="276" fill="#EDEFf2" font-family="Inter, Arial, sans-serif" font-size="58" font-weight="600">Remoter</text>
+  <text x="250" y="348" fill="#8C919B" font-family="Inter, Arial, sans-serif" font-size="11">DUAL REMOTES · V · VOICE SIGNAL</text>
+  <rect x="258" y="372" width="174" height="2" fill="#383B40"/>
+  <circle cx="262" cy="404" r="4" fill="#4FD187"/><text x="276" y="408" fill="#8C919B" font-family="Inter, Arial, sans-serif" font-size="11">V · 双遥控器</text>
+  <circle cx="394" cy="404" r="4" fill="#4FD187" fill-opacity=".5"/><text x="408" y="408" fill="#8C919B" font-family="Inter, Arial, sans-serif" font-size="11">Waves · 麦克风网罩</text>
+
+  <g filter="url(#shadow)"><rect x="816" y="118" width="200" height="346" rx="18" fill="#FFFFFF" stroke="#D7DAE0"/></g>
+  <g transform="translate(850 166) scale(.6)"><use href="#mark-light"/></g>
+  <text x="850" y="350" fill="#14171C" font-family="Inter, Arial, sans-serif" font-size="13" font-weight="600">Light</text>
+  <text x="850" y="376" fill="#636872" font-family="Inter, Arial, sans-serif" font-size="11">文档 / 浅色背景</text>
+
+  <g filter="url(#shadow)"><rect x="1048" y="118" width="192" height="346" rx="18" fill="#060708" stroke="#383B40"/></g>
+  <g transform="translate(1078 166) scale(.6)"><use href="#mark-mono"/></g>
+  <text x="1078" y="350" fill="#EDEFf2" font-family="Inter, Arial, sans-serif" font-size="13" font-weight="600">Mono</text>
+  <text x="1078" y="376" fill="#8C919B" font-family="Inter, Arial, sans-serif" font-size="11">菜单栏 / 单色</text>
+
+  <text x="40" y="524" fill="#14171C" font-family="Inter, Arial, sans-serif" font-size="14" font-weight="600">Small-size test</text>
+  <g transform="translate(40 542)">
+    <rect width="184" height="190" rx="14" fill="#15171A" stroke="#383B40"/>
+    <g transform="translate(28 26) scale(.582)"><use href="#mark-dark"/></g>
+    <text x="18" y="174" fill="#8C919B" font-family="Inter, Arial, sans-serif" font-size="11">128 px</text>
+  </g>
+  <g transform="translate(240 542)">
+    <rect width="116" height="190" rx="14" fill="#15171A" stroke="#383B40"/>
+    <g transform="translate(26 26) scale(.291)"><use href="#mark-dark-medium"/></g>
+    <text x="18" y="174" fill="#8C919B" font-family="Inter, Arial, sans-serif" font-size="11">64 px</text>
+  </g>
+  <g transform="translate(372 542)">
+    <rect width="116" height="190" rx="14" fill="#15171A" stroke="#383B40"/>
+    <g transform="translate(42 26) scale(.1455)"><use href="#mark-dark-compact"/></g>
+    <text x="18" y="174" fill="#8C919B" font-family="Inter, Arial, sans-serif" font-size="11">32 px</text>
+  </g>
+  <g transform="translate(504 542)">
+    <rect width="116" height="190" rx="14" fill="#15171A" stroke="#383B40"/>
+    <g transform="translate(50 26) scale(.0727)"><use href="#mark-dark-micro"/></g>
+    <text x="18" y="174" fill="#8C919B" font-family="Inter, Arial, sans-serif" font-size="11">16 px</text>
+  </g>
+
+  <rect x="690" y="542" width="550" height="210" rx="16" fill="#0E0F11" stroke="#383B40"/>
+  <text x="722" y="586" fill="#EDEFf2" font-family="Inter, Arial, sans-serif" font-size="15" font-weight="600">Brand colors</text>
+  <rect x="722" y="610" width="58" height="58" rx="14" fill="#0E0F11" stroke="#383B40"/>
+  <text x="796" y="628" fill="#EDEFf2" font-family="Inter, Arial, sans-serif" font-size="12" font-weight="600">Panel</text>
+  <text x="796" y="648" fill="#8C919B" font-family="Inter, Arial, sans-serif" font-size="11">#0E0F11</text>
+  <rect x="972" y="610" width="58" height="58" rx="14" fill="#4FD187" stroke="#383B40"/>
+  <text x="1046" y="628" fill="#EDEFf2" font-family="Inter, Arial, sans-serif" font-size="12" font-weight="600">Signal</text>
+  <text x="1046" y="648" fill="#8C919B" font-family="Inter, Arial, sans-serif" font-size="11">#4FD187</text>
+  <rect x="722" y="682" width="58" height="58" rx="14" fill="#C7D1D6" stroke="#383B40"/>
+  <text x="796" y="700" fill="#EDEFf2" font-family="Inter, Arial, sans-serif" font-size="12" font-weight="600">Remote body</text>
+  <text x="796" y="720" fill="#8C919B" font-family="Inter, Arial, sans-serif" font-size="11">#C7D1D6</text>
+</svg>

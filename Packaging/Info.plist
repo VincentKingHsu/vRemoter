@@ -5,7 +5,7 @@
     <key>CFBundleDevelopmentRegion</key>
     <string>zh_CN</string>
     <key>CFBundleDisplayName</key>
-    <string>vRemote</string>
+    <string>vRemoter</string>
     <key>CFBundleExecutable</key>
     <string>vRemote</string>
     <key>CFBundleIdentifier</key>
@@ -13,17 +13,27 @@
     <key>CFBundleInfoDictionaryVersion</key>
     <string>6.0</string>
     <key>CFBundleName</key>
-    <string>vRemote</string>
+    <string>vRemoter</string>
+    <key>CFBundleIconFile</key>
+    <string>vRemoter.icns</string>
     <key>CFBundlePackageType</key>
     <string>APPL</string>
     <key>CFBundleShortVersionString</key>
-    <string>1.0.0-beta.1</string>
+    <string>1.0.1</string>
     <key>CFBundleVersion</key>
-    <string>1</string>
+    <string>101</string>
     <key>LSMinimumSystemVersion</key>
     <string>12.0</string>
     <key>LSUIElement</key>
     <true/>
+    <key>VRReleasesURL</key>
+    <string>https://updates.vincentstudio.org/vremoter/releases.json</string>
+    <key>VRCommerceConfigURL</key>
+    <string>https://updates.vincentstudio.org/vremoter/commerce.json</string>
+	<key>VRTelemetryDeckAppID</key>
+	<string>0B41E7AD-49DA-4A8F-B216-BCF13B3A2D25</string>
+	<key>VRTelemetryDeckNamespace</key>
+	<string>cn.live</string>
     <key>NSBluetoothAlwaysUsageDescription</key>
     <string>连接 X6 蓝牙语音遥控器并接收语音音频。</string>
     <key>NSBluetoothPeripheralUsageDescription</key>

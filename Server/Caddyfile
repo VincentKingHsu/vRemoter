@@ -1,0 +1,15 @@
+vremoter.vincentstudio.org {
+    root * /srv/vincentstudio/vremoter-site
+    encode zstd gzip
+    file_server
+}
+
+updates.vincentstudio.org {
+    root * /srv/vincentstudio/updates
+    encode zstd gzip
+    header {
+        Access-Control-Allow-Origin "https://vremoter.vincentstudio.org"
+        X-Content-Type-Options "nosniff"
+    }
+    file_server
+}

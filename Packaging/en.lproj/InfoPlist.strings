@@ -1,0 +1,4 @@
+"NSBluetoothAlwaysUsageDescription" = "Connect to the X6 Bluetooth voice remote and receive microphone audio.";
+"NSBluetoothPeripheralUsageDescription" = "Connect to the X6 Bluetooth voice remote and receive microphone audio.";
+"NSInputMonitoringUsageDescription" = "Recognize the X6 voice button and suppress its native Search action during voice input.";
+"NSMicrophoneUsageDescription" = "Use the X6 remote and MacBook microphones together for voice input.";
