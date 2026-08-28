@@ -2,6 +2,8 @@
 
 > 本仓库保存 vRemoter 的源码、设计源稿、构建脚本与测试。普通用户请通过 `vincentstudio.org` 系列域名访问官网、下载与更新服务。
 
+[官方网站](https://vremoter.vincentstudio.org/) · [下载最新版](https://updates.vincentstudio.org/vremoter/) · [v1.0.1 Release](https://github.com/VincentKingHsu/vRemoter/releases/tag/v1.0.1)
+
 ## 产品定位
 
 vRemoter 把 X6 双模语音遥控器变成 macOS 上的 Vibe Coding 控制器：遥控器语音键控制豆包输入法，X6 麦克风与 MacBook 麦克风混合为同一个 CoreAudio 输入设备 `vRemoteDr 2ch`。
@@ -22,15 +24,15 @@ vRemoter 免费提供。如果它帮你省下了一点时间，欢迎请我喝�
 |---|---|---|
 | APP、驱动构建、测试与设计 | 本 GitHub 仓库 | 是 |
 | 官网静态源文件 | `docs/` | 是，部署结果见官网 |
-| 官网 | `https://vremoter.vincentstudio.org` | 是 |
-| 更新、PKG/DMG、购买配置 | `https://updates.vincentstudio.org/vremoter/` | 是 |
+| 官网 | [vremoter.vincentstudio.org](https://vremoter.vincentstudio.org/) | 是 |
+| 更新、PKG/DMG、购买配置 | [updates.vincentstudio.org/vremoter](https://updates.vincentstudio.org/vremoter/) | 是 |
 | 原始宣传视频与市场素材 | 仓库外 `../marketing/` | 否，不上传 Git |
 
 遥控器相关 GitHub 仓库：
 
-- `VincentKingHsu/vRemoter`
-- `VincentKingHsu/x6-remote-voice-bridge`
-- `VincentKingHsu/MiRemoteVoice`
+- [VincentKingHsu/vRemoter](https://github.com/VincentKingHsu/vRemoter)
+- [VincentKingHsu/x6-remote-voice-bridge](https://github.com/VincentKingHsu/x6-remote-voice-bridge)
+- [VincentKingHsu/MiRemoteVoice](https://github.com/VincentKingHsu/MiRemoteVoice)
 
 ## 目录
 
