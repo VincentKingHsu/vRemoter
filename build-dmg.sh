@@ -11,7 +11,7 @@ FINAL_DMG="$SCRIPT_DIR/dist/vRemoter-$VERSION.dmg"
 
 rm -rf "$STAGING" "$FINAL_DMG"
 mkdir -p "$STAGING"
-ditto "$SCRIPT_DIR/dist/vRemote.app" "$STAGING/vRemote.app"
+ditto "$SCRIPT_DIR/dist/build/vRemote.app" "$STAGING/vRemote.app"
 ln -s /Applications "$STAGING/Applications"
 
 hdiutil create \

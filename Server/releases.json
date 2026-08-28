@@ -1,5 +1,31 @@
 [
   {
+    "id": 1000100,
+    "tag_name": "v1.0.1",
+    "name": "vRemoter 1.0.1",
+    "body": "购买入口暂停开放；APP 会在没有可用购买链接时自动隐藏入口。本次驱动未变化。",
+    "html_url": "https://updates.vincentstudio.org/vremoter/",
+    "draft": false,
+    "prerelease": false,
+    "driver_update_required": false,
+    "assets": [
+      {
+        "id": 1000101,
+        "name": "vRemoter-1.0.1.pkg",
+        "browser_download_url": "https://updates.vincentstudio.org/vremoter/vRemoter-1.0.1.pkg",
+        "digest": "sha256:a7b3777f4976c16fe7f61808fb7910a3eed52ea9d74c032ba694df46be6893e9",
+        "size": 7460966
+      },
+      {
+        "id": 1000102,
+        "name": "vRemoter-1.0.1.dmg",
+        "browser_download_url": "https://updates.vincentstudio.org/vremoter/vRemoter-1.0.1.dmg",
+        "digest": "sha256:c059a77717249b01e656c0baee918f8511003eeeb6624d1db2ac7ca3511a182d",
+        "size": 7717687
+      }
+    ]
+  },
+  {
     "id": 1000000,
     "tag_name": "v1.0.0",
     "name": "vRemoter 1.0",

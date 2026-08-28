@@ -16,7 +16,7 @@ rm -rf "$PAYLOAD_ROOT" "$UNSIGNED_PKG" "$FINAL_PKG"
 mkdir -p "$PAYLOAD_ROOT/Applications"
 mkdir -p "$PAYLOAD_ROOT/Library/Audio/Plug-Ins/HAL"
 
-ditto "$SCRIPT_DIR/dist/vRemote.app" "$PAYLOAD_ROOT/Applications/vRemote.app"
+ditto "$SCRIPT_DIR/dist/build/vRemote.app" "$PAYLOAD_ROOT/Applications/vRemote.app"
 ditto "$SCRIPT_DIR/Driver/build/vRemoteDriver.driver" \
   "$PAYLOAD_ROOT/Library/Audio/Plug-Ins/HAL/vRemoteDriver.driver"
 

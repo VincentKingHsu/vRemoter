@@ -33,14 +33,7 @@ languageButtons.forEach((button) => {
 });
 
 const fallbackCommerce = {
-  stores: [{
-    id: 'xiaohongshu',
-    enabled: true,
-    nameZh: '小红书',
-    nameEn: 'Xiaohongshu',
-    url: 'https://xhslink.com/m/3E0dFZwiR9R',
-    qrImageURL: 'assets/commerce/xiaohongshu-qr.png'
-  }]
+  stores: []
 };
 
 function renderStores(config = fallbackCommerce) {

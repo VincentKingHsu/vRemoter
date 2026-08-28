@@ -5,8 +5,8 @@
 ## 1. 固定架构
 
 ```text
-私有 GitHub vRemoter
-  └─ 源码、设计、测试、内部说明
+公开 GitHub vRemoter
+  └─ 源码、设计与测试
 
 Spaceship DNS
   ├─ vremoter.vincentstudio.org → 47.250.150.45
@@ -25,12 +25,14 @@ Spaceship DNS
 
 上海服务器备案完成后，可只修改 DNS 指向，APP 内 URL 不需要改变。
 
-### 当前上线状态（2026-08-11）
+### 当前上线状态（2026-08-28）
 
 - `https://vremoter.vincentstudio.org/` 已在马来西亚服务器通过 Caddy 提供服务。
 - `https://updates.vincentstudio.org/vremoter/`、`releases.json` 与 `commerce.json` 已通过公网 HTTPS 和 CORS 验证。
 - TLS 证书由 Caddy 自动申请和续期；首次证书为 Let's Encrypt。
 - 当前首发版只公开 `vRemoter-1.0.0.pkg`，页面没有 DMG；只有未来真正发布 APP-only 更新时才增加 DMG。
+- 1.0.1 为 APP-only 更新：首次安装继续使用新版 PKG，已安装驱动的用户可使用 DMG。
+- APP 与官网购买入口已暂停；远程配置中没有启用且有效的店铺时，APP 自动隐藏入口。
 - 当前 PKG 尚未完成 Developer ID 签名与公证，下载页必须保留明确提示；完成签名、公证和实机验证后再替换同版本文件或发布新版本。
 - Spaceship 的根域名 A 记录仍指向上海服务器；本次只新增了 `vremoter` 和 `updates`，两者指向 `47.250.150.45`。
 - GitHub 草稿 PR：`VincentKingHsu/vRemoter#1`，分支为 `agent/private-self-hosted-release`。
@@ -95,7 +97,7 @@ Spaceship DNS
 
 ## 6. 发布前检查表
 
-- [ ] 三个遥控器 GitHub 仓库均为 Private。
+- [ ] 三个遥控器 GitHub 仓库均为 Public。
 - [ ] `../marketing/` 未进入 Git 暂存区。
 - [ ] APP 更新地址和购买配置地址为 `updates.vincentstudio.org`。
 - [ ] 自测和 Release 构建通过。

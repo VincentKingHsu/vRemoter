@@ -498,6 +498,7 @@ final class DebugWindowController: NSWindowController, NSWindowDelegate {
 
 private struct StudioMixerView: View {
     @ObservedObject var model: ConsoleViewModel
+    @ObservedObject private var commerce = CommerceConfigModel.shared
 
     var body: some View {
         VStack(spacing: 0) {
@@ -535,6 +536,9 @@ private struct StudioMixerView: View {
             case .purchase:
                 PurchaseView(model: .shared)
             }
+        }
+        .onAppear {
+            commerce.refresh()
         }
     }
 
@@ -631,7 +635,7 @@ private struct StudioMixerView: View {
                 db: model.remoteLevelDB,
                 enabled: model.remoteInputEnabled,
                 solo: model.remoteSolo,
-                purchaseLink: true,
+                purchaseLink: !commerce.config.availableStores.isEmpty,
                 showTestHint: model.showX6MicHint && model.hidConnected && model.bleConnected,
                 onPurchase: model.showPurchase,
                 onMute: model.toggleRemoteMute,

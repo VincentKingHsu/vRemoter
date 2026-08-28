@@ -1,15 +1,15 @@
 {
   "schemaVersion": 1,
-  "updatedAt": "2026-08-10T21:00:00+08:00",
+  "updatedAt": "2026-08-28T12:00:00+08:00",
   "heroImageURL": "https://vremoter.vincentstudio.org/assets/commerce/x6-vibe-coding-hero-v2.png",
   "stores": [
     {
       "id": "xiaohongshu",
-      "enabled": true,
+      "enabled": false,
       "nameZh": "小红书",
       "nameEn": "Xiaohongshu",
-      "url": "https://xhslink.com/m/3E0dFZwiR9R",
-      "qrImageURL": "https://updates.vincentstudio.org/vremoter/xiaohongshu-qr.png"
+      "url": "",
+      "qrImageURL": ""
     },
     {
       "id": "douyin",

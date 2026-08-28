@@ -1,24 +1,24 @@
-# vRemoter 私有开发仓库
+# vRemoter
 
-> 本仓库保存 vRemoter 的完整源码、设计源稿、构建脚本、测试与内部运营说明。仓库必须保持 **Private**；公开用户只通过 `vincentstudio.org` 系列域名访问官网、下载与更新服务。
+> 本仓库保存 vRemoter 的源码、设计源稿、构建脚本与测试。普通用户请通过 `vincentstudio.org` 系列域名访问官网、下载与更新服务。
 
 ## 产品定位
 
 vRemoter 把 X6 双模语音遥控器变成 macOS 上的 Vibe Coding 控制器：遥控器语音键控制豆包输入法，X6 麦克风与 MacBook 麦克风混合为同一个 CoreAudio 输入设备 `vRemoteDr 2ch`。
 
-当前版本：`1.0.0`
+当前版本：`1.0.1`
 
 ## 仓库与公开服务边界
 
 | 内容 | 位置 | 是否公开 |
 |---|---|---|
-| APP、驱动构建、测试、设计与运营说明 | 本 GitHub 仓库 | 否 |
-| 官网静态源文件 | `docs/` | 仓库内私有，部署结果公开 |
+| APP、驱动构建、测试与设计 | 本 GitHub 仓库 | 是 |
+| 官网静态源文件 | `docs/` | 是，部署结果见官网 |
 | 官网 | `https://vremoter.vincentstudio.org` | 是 |
 | 更新、PKG/DMG、购买配置 | `https://updates.vincentstudio.org/vremoter/` | 是 |
 | 原始宣传视频与市场素材 | 仓库外 `../marketing/` | 否，不上传 Git |
 
-所有遥控器相关 GitHub 仓库都应保持 Private：
+遥控器相关 GitHub 仓库：
 
 - `VincentKingHsu/vRemoter`
 - `VincentKingHsu/x6-remote-voice-bridge`
@@ -34,7 +34,7 @@ vRemoter 把 X6 双模语音遥控器变成 macOS 上的 Vibe Coding 控制器�
 - `Design/`：冻结 UI 和 Logo 的 Figma 本地插件源稿。
 - `docs/`：公开官网静态源文件。
 - `Server/`：马来西亚服务器配置与发布清单模板。
-- `OPERATIONS.md`：从构建到上线、换链接、回滚的长期操作手册。
+- `OPERATIONS.md`：从构建到上线和回滚的操作手册。
 
 ## 构建
 
@@ -48,7 +48,7 @@ vRemoter 把 X6 双模语音遥控器变成 macOS 上的 Vibe Coding 控制器�
 - `PKG`：首次安装或驱动发生变化时使用，包含 APP 与音频驱动。
 - `DMG`：仅更新 APP，适合已经安装过驱动且本次驱动未变化的用户。
 
-当前 1.0.0 首发页只提供 PKG；DMG 会在未来第一次 APP-only 更新时再增加。当前公开 PKG 尚未完成 Developer ID 签名与公证，下载页必须明确标注这一状态；正式广泛分发前仍须完成签名、公证与真实机器安装验证。
+1.0.1 是首次 APP-only 更新：PKG 供首次安装，DMG 供已经安装过驱动的用户覆盖更新。当前发布包尚未完成 Developer ID 签名与公证，下载页必须明确标注这一状态；正式广泛分发前仍须完成签名、公证与真实机器安装验证。
 
 ## 更新策略
 
@@ -64,7 +64,7 @@ APP 从以下地址读取版本清单：
 
 `https://updates.vincentstudio.org/vremoter/commerce.json`
 
-修改公开配置即可更新用户看到的小红书链接，不需要重新发布 APP。内部操作步骤见 [OPERATIONS.md](OPERATIONS.md)。
+修改公开配置即可控制购买入口，不需要重新发布 APP。没有启用且有效的购买链接时，APP 会隐藏“购买遥控器”按钮。
 
 ## 发布前阻断项
 

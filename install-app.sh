@@ -2,7 +2,7 @@
 set -euo pipefail
 
 SCRIPT_DIR="${0:A:h}"
-SOURCE="$SCRIPT_DIR/dist/vRemote.app"
+SOURCE="$SCRIPT_DIR/dist/build/vRemote.app"
 DESTINATION="$HOME/Applications/vRemote.app"
 
 if [[ ! -d "$SOURCE" ]]; then

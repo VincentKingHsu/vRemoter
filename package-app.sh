@@ -2,7 +2,7 @@
 set -euo pipefail
 
 SCRIPT_DIR="${0:A:h}"
-APP="$SCRIPT_DIR/dist/vRemote.app"
+APP="$SCRIPT_DIR/dist/build/vRemote.app"
 CONTENTS="$APP/Contents"
 
 cd "$SCRIPT_DIR"
