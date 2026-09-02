@@ -1,11 +1,11 @@
 // vRemote for macOS.
 //
-// 1. X6 voice key → matching Option toggle semantics
-// 2. X6 ATVV + Mac microphone → aligned mix → vRemoteDr 2ch → Doubao
-// 3. A physical Mac Option key controls the same X6 microphone session
+// 1. Supported remote voice key → matching Option toggle semantics
+// 2. Remote ATVV + Mac microphone → aligned mix → vRemoteDr 2ch → Doubao
+// 3. A physical Mac Option key controls the same remote microphone session
 //
 // macOS-only. Requires:
-//   * X6-Remote paired in System Settings → Bluetooth
+//   * X6-Remote or Chromecast Remote paired in System Settings → Bluetooth
 //   * Accessibility permission (System Settings → Privacy & Security →
 //     Accessibility) for Option observation and Search suppression
 //   * vRemoteDriver.driver installed and visible as vRemoteDr 2ch in
@@ -85,9 +85,20 @@ final class AppController: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private var x6HIDConnected = false
     private var x6BLEConnected = false
     private var x6RemoteStreaming = false
+    private var chromecastHIDConnected = false
+    private var chromecastBLEConnected = false
+    private var chromecastRemoteStreaming = false
     private var remoteStreaming = false
 
+    private enum ActiveVoiceRemote {
+        case none
+        case x6
+        case chromecast
+    }
+    private var activeVoiceRemote: ActiveVoiceRemote = .none
+
     private let x6 = X6HIDBridge()
+    private let chromecastHID = ChromecastRemoteHIDBridge()
     private let x6SearchSuppressor = X6SearchSuppressor()
     private let doubaoAudioState = DoubaoAudioStateMonitor()
     private lazy var x6Session = X6SessionCoordinator(
@@ -100,6 +111,13 @@ final class AppController: NSObject, NSApplicationDelegate, NSMenuDelegate {
         savedUUIDFilename: "x6-uuid.txt",
         recordingPrefix: "x6-voice",
         logTag: "X6-BLE",
+        resetSessionOnConnect: true
+    )
+    private let chromecastBLE = BLEBridge(
+        nameHint: "Chromecast Remote",
+        savedUUIDFilename: "chromecast-remote-uuid.txt",
+        recordingPrefix: "chromecast-remote-voice",
+        logTag: "CAST-BLE",
         resetSessionOnConnect: true
     )
 
@@ -220,24 +238,71 @@ final class AppController: NSObject, NSApplicationDelegate, NSMenuDelegate {
             self?.updateStatus()
         }
         x6BLE.onAudioStarted = { [weak self] reason, _ in
+            self?.activeVoiceRemote = .x6
             self?.x6Session.remoteAudioStarted(reason: reason)
         }
         x6BLE.onAudioStopped = { [weak self] reason in
+            guard self?.activeVoiceRemote == .x6 else { return }
             self?.x6Session.remoteAudioStopped(reason: reason)
         }
         x6BLE.onLevel = { [weak self] db, _ in
             guard AudioPipe.shared.isRemoteInputEnabled else { return }
             self?.debugWindow.updateRemoteLevel(db)
         }
+        chromecastHID.onConnectionChanged = { [weak self] connected in
+            self?.chromecastHIDConnected = connected
+            AppAnalytics.signal(
+                connected
+                    ? "Remote.Chromecast.HID.connected"
+                    : "Remote.Chromecast.HID.disconnected"
+            )
+            self?.updateStatus()
+        }
+        chromecastBLE.onConnectionChanged = { [weak self] connected in
+            self?.chromecastBLEConnected = connected
+            AppAnalytics.signal(
+                connected
+                    ? "Remote.Chromecast.BLE.connected"
+                    : "Remote.Chromecast.BLE.disconnected"
+            )
+            if !connected { self?.chromecastRemoteStreaming = false }
+            self?.refreshCombinedStreaming()
+            self?.updateStatus()
+        }
+        chromecastBLE.onStreamingChanged = { [weak self] streaming, _ in
+            self?.chromecastRemoteStreaming = streaming
+            AppAnalytics.signal(
+                streaming
+                    ? "Voice.Chromecast.started"
+                    : "Voice.Chromecast.stopped"
+            )
+            self?.refreshCombinedStreaming()
+            self?.updateStatus()
+        }
+        chromecastBLE.onAudioStarted = { [weak self] reason, _ in
+            self?.activeVoiceRemote = .chromecast
+            self?.x6Session.remoteAudioStarted(
+                reason: reason,
+                toggleOnRepeatedPhysicalStart: true
+            )
+        }
+        chromecastBLE.onAudioStopped = { [weak self] reason in
+            guard self?.activeVoiceRemote == .chromecast else { return }
+            self?.x6Session.remoteAudioStopped(reason: reason)
+        }
+        chromecastBLE.onLevel = { [weak self] db, _ in
+            guard AudioPipe.shared.isRemoteInputEnabled else { return }
+            self?.debugWindow.updateRemoteLevel(db)
+        }
         x6Session.onMicrophoneCloseRequested = { [weak self] in
-            self?.x6BLE.closeMicrophone(force: true)
+            self?.closeActiveRemoteMicrophone()
         }
         x6Session.onMicrophoneOpenRequested = { [weak self] in
             guard AudioPipe.shared.isRemoteInputEnabled else {
-                print("[AUDIO] X6 未勾选，跳过主动开麦")
+                print("[AUDIO] 遥控器未勾选，跳过主动开麦")
                 return
             }
-            self?.x6BLE.openMicrophone()
+            self?.openPreferredRemoteMicrophone()
         }
         x6Session.onStateChanged = { [weak self] status in
             self?.headerLabel.title = "状态 · \(status)"
@@ -247,6 +312,8 @@ final class AppController: NSObject, NSApplicationDelegate, NSMenuDelegate {
         x6SearchSuppressor.start()
         x6.start()
         x6BLE.start()
+        chromecastHID.start()
+        chromecastBLE.start()
 
         // Start the loopback engine eagerly so device binding is verified
         // before the first BLE audio packet arrives.
@@ -438,8 +505,8 @@ final class AppController: NSObject, NSApplicationDelegate, NSMenuDelegate {
     }
 
     private func updateStatus() {
-        let anyHID = x6HIDConnected
-        let anyBLE = x6BLEConnected
+        let anyHID = x6HIDConnected || chromecastHIDConnected
+        let anyBLE = x6BLEConnected || chromecastBLEConnected
         let doubaoSnapshot = doubaoAudioState.snapshotNow()
         let doubaoUsesVRemote = doubaoSnapshot.inputDeviceNames.contains("vRemoteDr 2ch")
         let statusText: String
@@ -458,8 +525,8 @@ final class AppController: NSObject, NSApplicationDelegate, NSMenuDelegate {
         headerLabel.title = L10n.text("状态 · \(statusText)", "Status · \(statusText)")
         debugWindow.update(
             status: statusText,
-            hidConnected: x6HIDConnected,
-            bleConnected: x6BLEConnected,
+            hidConnected: anyHID,
+            bleConnected: anyBLE,
             remoteStreaming: remoteStreaming,
             macInputEnabled: AudioPipe.shared.isMacInputEnabled,
             remoteInputEnabled: AudioPipe.shared.isRemoteInputEnabled,
@@ -494,9 +561,10 @@ final class AppController: NSObject, NSApplicationDelegate, NSMenuDelegate {
             )
             if !enabled {
                 self?.x6BLE.closeMicrophone(force: true)
+                self?.chromecastBLE.closeMicrophone(force: true)
                 self?.debugWindow.updateRemoteLevel(-120)
             } else if self?.doubaoAudioState.snapshotNow().isRecording == true {
-                self?.x6BLE.openMicrophone()
+                self?.openPreferredRemoteMicrophone()
             }
             self?.updateStatus()
         }
@@ -539,6 +607,7 @@ final class AppController: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private func stopMicrophoneNow() {
         x6Session.forceClose()
         x6BLE.closeMicrophone(force: true)
+        chromecastBLE.closeMicrophone(force: true)
         AudioPipe.shared.setRemoteActive(false)
         updateStatus()
     }
@@ -567,7 +636,36 @@ final class AppController: NSObject, NSApplicationDelegate, NSMenuDelegate {
     }
 
     private func refreshCombinedStreaming() {
-        remoteStreaming = x6RemoteStreaming
+        remoteStreaming = x6RemoteStreaming || chromecastRemoteStreaming
+    }
+
+    private func openPreferredRemoteMicrophone() {
+        switch activeVoiceRemote {
+        case .chromecast where chromecastBLEConnected:
+            chromecastBLE.openMicrophone()
+        case .x6 where x6BLEConnected:
+            x6BLE.openMicrophone()
+        default:
+            if x6BLEConnected {
+                activeVoiceRemote = .x6
+                x6BLE.openMicrophone()
+            } else if chromecastBLEConnected {
+                activeVoiceRemote = .chromecast
+                chromecastBLE.openMicrophone()
+            }
+        }
+    }
+
+    private func closeActiveRemoteMicrophone() {
+        switch activeVoiceRemote {
+        case .x6:
+            x6BLE.closeMicrophone(force: true)
+        case .chromecast:
+            chromecastBLE.closeMicrophone(force: true)
+        case .none:
+            x6BLE.closeMicrophone(force: true)
+            chromecastBLE.closeMicrophone(force: true)
+        }
     }
 
     private func refreshMenuState() {
@@ -611,6 +709,7 @@ final class AppController: NSObject, NSApplicationDelegate, NSMenuDelegate {
         let enabled = !AppStorage.recordingEnabled
         AppStorage.recordingEnabled = enabled
         x6BLE.setRecordingEnabled(enabled)
+        chromecastBLE.setRecordingEnabled(enabled)
         refreshMenuState()
     }
 
@@ -644,9 +743,11 @@ final class AppController: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
     func applicationWillTerminate(_ notification: Notification) {
         x6.stop()
+        chromecastHID.stop()
         x6SearchSuppressor.stop()
         x6Session.stop()
         x6BLE.stop()
+        chromecastBLE.stop()
         AudioPipe.shared.stop()
     }
 }

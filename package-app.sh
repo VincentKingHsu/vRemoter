@@ -53,6 +53,10 @@ if [[ -d "$SCRIPT_DIR/Resources/Commerce" ]]; then
     "$CONTENTS/Resources/Commerce"
 fi
 chmod 755 "$CONTENTS/MacOS/vRemote"
+# SwiftPM resource bundles may contain read-only privacy manifests. The app
+# bundle is a disposable build artifact, so make it owner-writable before
+# clearing inherited metadata and applying the final ad-hoc signature.
+chmod -R u+w "$APP"
 xattr -cr "$APP"
 
 # Give the ad-hoc build a stable designated requirement. Without this,

@@ -47,7 +47,24 @@ final class X6SessionCoordinator {
 
     // MARK: - ATVV transport
 
-    func remoteAudioStarted(reason: UInt8) {
+    func remoteAudioStarted(
+        reason: UInt8,
+        toggleOnRepeatedPhysicalStart: Bool = false
+    ) {
+        let snapshot = doubaoState.snapshotNow()
+
+        // A host-requested persistent stream can already be active when the
+        // user presses Chromecast Remote's voice key a second time. Handle
+        // the physical 0x03 edge before duplicate-stream filtering, otherwise
+        // that reliable toggle-off gesture is discarded as another START.
+        if toggleOnRepeatedPhysicalStart,
+           reason == 0x03,
+           (recognitionExpectedOpen || snapshot.isRecording)
+        {
+            closeRecognitionFromRemote(reason: "ATVV TOGGLE")
+            return
+        }
+
         guard !transportStreaming else {
             print(
                 "[X6-SESSION] duplicate AUDIO_START ignored reason=" +
@@ -59,7 +76,6 @@ final class X6SessionCoordinator {
         transportOpenRequested = false
         activateRemoteRoute(requestTransportOpen: false)
 
-        let snapshot = doubaoState.snapshotNow()
         print(
             "[X6-SESSION] AUDIO_START reason=" +
             String(format: "0x%02x", reason) +
@@ -71,7 +87,7 @@ final class X6SessionCoordinator {
         // A keyboard Option requested this stream. The physical Option has
         // already reached Doubao, so AUDIO_START is confirmation only.
         if owner == .keyboard {
-            publish("豆包录音中 · X6 已接入")
+            publish("豆包录音中 · 遥控器已接入")
             return
         }
 
@@ -87,7 +103,7 @@ final class X6SessionCoordinator {
         optionRequestedOpen = true
         closeOptionSent = false
         Key.optionTap()
-        publish("X6 已启动 · 正在打开豆包")
+        publish("遥控器已启动 · 正在打开豆包")
         scheduleStartVerification()
         reconcileSoon(after: 0.03)
         reconcileSoon(after: 0.15)
@@ -112,7 +128,7 @@ final class X6SessionCoordinator {
         // A transport stop is never a keyboard event. Closing Doubao here
         // caused the previous close/open feedback loop.
         if recognitionExpectedOpen {
-            publish("豆包仍开启 · X6 音频已停止")
+            publish("豆包仍开启 · 遥控器音频已停止")
         } else {
             scheduleRouteClose()
         }
@@ -123,11 +139,11 @@ final class X6SessionCoordinator {
     /// The first X6 tap is represented by AUDIO_START. The next HID gesture
     /// is the explicit toggle-off action.
     func remoteHIDShortPress() {
-        closeRecognitionFromX6(reason: "SHORT")
+        closeRecognitionFromRemote(reason: "HID SHORT")
     }
 
     func remoteHIDLongPressEnded() {
-        closeRecognitionFromX6(reason: "LONG release")
+        closeRecognitionFromRemote(reason: "HID LONG release")
     }
 
     // MARK: - Physical keyboard Option
@@ -162,7 +178,7 @@ final class X6SessionCoordinator {
             closeOptionSent = false
             activateRemoteRoute(requestTransportOpen: true)
             scheduleStartVerification()
-            publish("豆包正在启动 · X6 已预热")
+            publish("豆包正在启动 · 遥控器已预热")
         }
     }
 
@@ -244,10 +260,10 @@ final class X6SessionCoordinator {
         }
     }
 
-    private func closeRecognitionFromX6(reason: String) {
+    private func closeRecognitionFromRemote(reason: String) {
         guard recognitionExpectedOpen, !closeOptionSent else {
             print(
-                "[X6-SESSION] HID \(reason) ignored; " +
+                "[X6-SESSION] \(reason) ignored; " +
                 "owner=\(owner.rawValue) " +
                 "expectedOpen=\(recognitionExpectedOpen) " +
                 "closeSent=\(closeOptionSent)"
@@ -262,8 +278,8 @@ final class X6SessionCoordinator {
         owner = .none
         Key.optionTap()
         scheduleRouteClose(after: 0.10)
-        publish("X6 已结束 · 正在关闭豆包")
-        print("[X6-SESSION] HID \(reason) → one Option TAP OFF")
+        publish("遥控器已结束 · 正在关闭豆包")
+        print("[X6-SESSION] \(reason) → one Option TAP OFF")
     }
 
     private func scheduleStartVerification() {
@@ -280,7 +296,7 @@ final class X6SessionCoordinator {
             self.optionRequestedOpen = false
             self.recognitionExpectedOpen = false
             self.scheduleRouteClose()
-            self.publish("豆包未启动 · X6 自动关闭")
+            self.publish("豆包未启动 · 遥控器自动关闭")
             print(
                 "[X6-SESSION] Option 后豆包未进入录音状态; " +
                 "state=\(snapshot.state.rawValue)"

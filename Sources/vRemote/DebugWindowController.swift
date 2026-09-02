@@ -115,8 +115,8 @@ enum PermissionKind: String, Identifiable, CaseIterable {
                     "System Settings will open Privacy & Security > Bluetooth."
                 ),
                 L10n.text(
-                    "找到 vRemote（或 vRemoter）并打开开关，然后返回应用等待 X6 重新连接。",
-                    "Enable vRemote or vRemoter, then return to the app and wait for X6 to reconnect."
+                    "找到 vRemote（或 vRemoter）并打开开关，然后返回应用等待遥控器重新连接。",
+                    "Enable vRemote or vRemoter, then return to the app and wait for the remote to reconnect."
                 )
             ]
         }
@@ -630,8 +630,8 @@ private struct StudioMixerView: View {
             .frame(width: 225)
             Divider().overlay(ConsoleTheme.lineSoft)
             InputChannelView(
-                title: L10n.text("X6 遥控器麦克风", "X6 Remote Mic"),
-                subtitle: L10n.text("X6 遥控器", "X6 Remote"),
+                title: L10n.text("遥控器麦克风", "Remote Mic"),
+                subtitle: L10n.text("蓝牙语音遥控器", "Bluetooth Voice Remote"),
                 db: model.remoteLevelDB,
                 enabled: model.remoteInputEnabled,
                 solo: model.remoteSolo,
@@ -675,7 +675,7 @@ private struct StudioMixerView: View {
                 onAction: model.openSoundInputSettings
             )
             StatusRow(
-                title: L10n.text("X6 连接", "X6 connection"),
+                title: L10n.text("遥控器连接", "Remote connection"),
                 value: x6Value,
                 tone: model.hidConnected && model.bleConnected ? .good : .warning,
                 action: model.hidConnected && model.bleConnected
@@ -705,7 +705,7 @@ private struct StudioMixerView: View {
                 title: L10n.text("输入监控权限", "Input Monitoring"),
                 value: model.inputMonitoringGranted
                     ? L10n.text("已授权", "Granted")
-                    : L10n.text("无法拦截 X6 原生搜索", "Cannot suppress X6 Search"),
+                    : L10n.text("无法监听遥控器语音键", "Cannot monitor remote voice key"),
                 tone: model.inputMonitoringGranted ? .good : .warning,
                 action: model.inputMonitoringGranted ? nil : L10n.text("去授权", "Grant"),
                 onAction: { model.activeModal = .permission(.inputMonitoring) }

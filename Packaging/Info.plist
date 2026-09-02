@@ -35,13 +35,13 @@
 	<key>VRTelemetryDeckNamespace</key>
 	<string>cn.live</string>
     <key>NSBluetoothAlwaysUsageDescription</key>
-    <string>连接 X6 蓝牙语音遥控器并接收语音音频。</string>
+    <string>连接蓝牙语音遥控器并接收语音音频。</string>
     <key>NSBluetoothPeripheralUsageDescription</key>
-    <string>连接 X6 蓝牙语音遥控器并接收语音音频。</string>
+    <string>连接蓝牙语音遥控器并接收语音音频。</string>
     <key>NSMicrophoneUsageDescription</key>
-    <string>同时使用 X6 遥控器和 MacBook 麦克风进行语音输入。</string>
+    <string>同时使用蓝牙遥控器和 MacBook 麦克风进行语音输入。</string>
     <key>NSInputMonitoringUsageDescription</key>
-    <string>识别 X6 语音键并阻止其原生搜索动作干扰语音输入。</string>
+    <string>识别蓝牙遥控器语音键并阻止原生搜索动作干扰语音输入。</string>
     <key>NSHighResolutionCapable</key>
     <true/>
 </dict>
