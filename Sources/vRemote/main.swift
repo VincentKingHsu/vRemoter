@@ -283,7 +283,7 @@ final class AppController: NSObject, NSApplicationDelegate, NSMenuDelegate {
             self?.activeVoiceRemote = .chromecast
             self?.x6Session.remoteAudioStarted(
                 reason: reason,
-                toggleOnRepeatedPhysicalStart: true
+                supportsPhysicalHoldGesture: true
             )
         }
         chromecastBLE.onAudioStopped = { [weak self] reason in

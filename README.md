@@ -13,7 +13,7 @@ vRemoter 把蓝牙语音遥控器变成 macOS 上的 Vibe Coding 控制器：遥
 - X6-Remote（VID `0x1D5A` / PID `0xC081`）
 - Google Chromecast Remote（VID `0x18D1` / PID `0x9450`）
 
-Chromecast Remote 当前已实现语音键单击切换：第一次单击打开豆包语音，第二次单击关闭。YouTube、Netflix 与信源键暂未重映射。
+Chromecast Remote 当前已实现语音键双模式：短按第一次打开、第二次关闭；长按时持续录音，松手自动关闭。YouTube、Netflix 与信源键暂未重映射。
 
 当前版本：`1.0.1`
 

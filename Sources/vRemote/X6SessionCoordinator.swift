@@ -12,6 +12,13 @@ import Foundation
 /// 3. AUDIO_START/AUDIO_STOP after a requested microphone transition are
 ///    transport confirmations only. They never create another key event.
 final class X6SessionCoordinator {
+    private struct PhysicalVoiceGesture {
+        let beganAt: Date
+        let recognitionWasOpen: Bool
+    }
+
+    private static let remoteHoldThreshold: TimeInterval = 0.55
+
     private enum Owner: String {
         case none
         case x6
@@ -29,6 +36,7 @@ final class X6SessionCoordinator {
     private var closeOptionSent = false
     private var closeWorkItem: DispatchWorkItem?
     private var startVerificationWorkItem: DispatchWorkItem?
+    private var physicalVoiceGesture: PhysicalVoiceGesture?
 
     var onMicrophoneOpenRequested: (() -> Void)?
     var onMicrophoneCloseRequested: (() -> Void)?
@@ -49,20 +57,38 @@ final class X6SessionCoordinator {
 
     func remoteAudioStarted(
         reason: UInt8,
-        toggleOnRepeatedPhysicalStart: Bool = false
+        supportsPhysicalHoldGesture: Bool = false
     ) {
         let snapshot = doubaoState.snapshotNow()
 
-        // A host-requested persistent stream can already be active when the
-        // user presses Chromecast Remote's voice key a second time. Handle
-        // the physical 0x03 edge before duplicate-stream filtering, otherwise
-        // that reliable toggle-off gesture is discarded as another START.
-        if toggleOnRepeatedPhysicalStart,
-           reason == 0x03,
-           (recognitionExpectedOpen || snapshot.isRecording)
-        {
-            closeRecognitionFromRemote(reason: "ATVV TOGGLE")
-            return
+        // Chromecast Remote emits one physical AUDIO_START(reason 0x03) at
+        // voice-key down and AUDIO_STOP(reason 0x02) at release. Record that
+        // gesture before duplicate-stream filtering because a host-requested
+        // persistent stream may already be active. Release duration then
+        // distinguishes a first short tap (stay open) from hold-to-talk
+        // (close on release). A gesture that began while recognition was
+        // already open also closes on release, preserving short-tap toggle.
+        if supportsPhysicalHoldGesture, reason == 0x03 {
+            let recognitionWasOpen =
+                recognitionExpectedOpen || snapshot.isRecording
+            if physicalVoiceGesture == nil {
+                physicalVoiceGesture = PhysicalVoiceGesture(
+                    beganAt: Date(),
+                    recognitionWasOpen: recognitionWasOpen
+                )
+            }
+            print(
+                "[X6-SESSION] physical ATVV DOWN " +
+                "recognitionWasOpen=\(recognitionWasOpen)"
+            )
+
+            if recognitionWasOpen {
+                transportStreaming = true
+                transportOpenRequested = false
+                activateRemoteRoute(requestTransportOpen: false)
+                publish("遥控器按住录音中")
+                return
+            }
         }
 
         guard !transportStreaming else {
@@ -110,6 +136,31 @@ final class X6SessionCoordinator {
     }
 
     func remoteAudioStopped(reason: UInt8) {
+        if reason == 0x02, let gesture = physicalVoiceGesture {
+            physicalVoiceGesture = nil
+            let duration = Date().timeIntervalSince(gesture.beganAt)
+            let wasHold = duration >= Self.remoteHoldThreshold
+            print(
+                String(
+                    format:
+                        "[X6-SESSION] physical ATVV UP duration=%.3fs " +
+                        "kind=%@ recognitionWasOpen=%@",
+                    duration,
+                    wasHold ? "HOLD" : "TAP",
+                    gesture.recognitionWasOpen ? "true" : "false"
+                )
+            )
+
+            if wasHold || gesture.recognitionWasOpen {
+                transportStreaming = false
+                transportOpenRequested = false
+                closeRecognitionFromRemote(
+                    reason: wasHold ? "ATVV HOLD release" : "ATVV TAP toggle"
+                )
+                return
+            }
+        }
+
         guard transportStreaming else {
             print(
                 "[X6-SESSION] duplicate AUDIO_STOP ignored reason=" +
@@ -196,6 +247,7 @@ final class X6SessionCoordinator {
         startVerificationWorkItem = nil
         closeWorkItem?.cancel()
         closeWorkItem = nil
+        physicalVoiceGesture = nil
         owner = .none
         optionRequestedOpen = false
         recognitionExpectedOpen = false
