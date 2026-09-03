@@ -2,7 +2,7 @@
 
 > 本仓库保存 vRemoter 的源码、设计源稿、构建脚本与测试。普通用户请通过 `vincentstudio.org` 系列域名访问官网、下载与更新服务。
 
-[官方网站](https://vremoter.vincentstudio.org/) · [下载最新版](https://updates.vincentstudio.org/vremoter/) · [v1.1.0 Release](https://github.com/VincentKingHsu/vRemoter/releases/tag/v1.1.0)
+[官方网站](https://vremoter.vincentstudio.org/) · [下载最新版](https://updates.vincentstudio.org/vremoter/) · [v1.1.1 Release](https://github.com/VincentKingHsu/vRemoter/releases/tag/v1.1.1)
 
 ## 产品定位
 
@@ -15,7 +15,15 @@ vRemoter 把蓝牙语音遥控器变成 macOS 上的 Vibe Coding 控制器：遥
 
 Chromecast Remote 已实现语音键双模式：短按第一次打开、第二次关闭；长按时持续录音，松手自动关闭。APP 还提供按型号保存的按键映射，可把方向、确认、返回、Home、YouTube、Netflix、信源、音量等按键改为常用 macOS 操作。
 
-当前版本：`1.1.0`
+当前版本：`1.1.1`
+
+## 1.1.1 修复
+
+- 修复 Chromecast Voice Remote 使用一段时间后，短按偶尔只打开豆包、遥控器麦克风却未持续收音的问题。
+- 修复电脑 Option 关闭豆包时，较晚到达的音频状态可能短暂重新开启遥控器音频的问题。
+- 改进双遥控器同时连接时的会话隔离、开麦确认与有限重试。
+- 修复 X6 第一次短按开麦可能被误判为旧音频事件的问题。
+- 更新按键映射页中的 Chromecast Remote 产品图。
 
 ## 1.1.0 新功能
 
@@ -82,7 +90,7 @@ vRemoter 免费提供。制作不易，麻烦打个赏补偿一点我的 Token �
 - `PKG`：首次安装或驱动发生变化时使用，包含 APP 与音频驱动。
 - `DMG`：仅更新 APP，适合已经安装过驱动且本次驱动未变化的用户。
 
-1.1.0 的驱动没有变化：PKG 供首次安装，DMG 供已经安装过驱动的用户覆盖更新。当前发布包尚未完成 Developer ID 签名与公证，下载页必须明确标注这一状态；正式广泛分发前仍须完成签名、公证与真实机器安装验证。
+1.1.1 的驱动没有变化：PKG 供首次安装，DMG 供已经安装过驱动的用户覆盖更新。当前发布包尚未完成 Developer ID 签名与公证，下载页必须明确标注这一状态；正式广泛分发前仍须完成签名、公证与真实机器安装验证。
 
 ## 更新策略
 

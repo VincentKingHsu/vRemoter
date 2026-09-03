@@ -1,5 +1,32 @@
 [
   {
+    "id": 1001110,
+    "tag_name": "v1.1.1",
+    "name": "vRemoter 1.1.1",
+    "body": "- 修复 Chromecast 短按偶尔只打开豆包、遥控器麦克风却未持续收音的问题\n- 修复电脑 Option 关闭后旧状态可能重新开启遥控器音频的问题\n- 改进双遥控器会话隔离与开麦确认\n- 修复 X6 第一次短按可能被误判的问题\n- 更新按键映射页中的 Chromecast Remote 产品图\n\n本次驱动没有变化；已安装过驱动的用户可直接使用 DMG 更新 APP。",
+    "html_url": "https://updates.vincentstudio.org/vremoter/",
+    "published_at": "2026-09-03T00:00:00+08:00",
+    "draft": false,
+    "prerelease": false,
+    "driver_update_required": false,
+    "assets": [
+      {
+        "id": 1001111,
+        "name": "vRemoter-1.1.1.pkg",
+        "browser_download_url": "https://updates.vincentstudio.org/vremoter/vRemoter-1.1.1.pkg",
+        "digest": "sha256:d0a4e338e2040966992dd59d668169ec0f7f20e57ee061d4b585139b9f98883e",
+        "size": 8121913
+      },
+      {
+        "id": 1001112,
+        "name": "vRemoter-1.1.1.dmg",
+        "browser_download_url": "https://updates.vincentstudio.org/vremoter/vRemoter-1.1.1.dmg",
+        "digest": "sha256:f8fb8c1c5b1712a13080c70ae8513f3fd023ec7422ea974ba937422b7d0228eb",
+        "size": 8385648
+      }
+    ]
+  },
+  {
     "id": 1001100,
     "tag_name": "v1.1.0",
     "name": "vRemoter 1.1.0",

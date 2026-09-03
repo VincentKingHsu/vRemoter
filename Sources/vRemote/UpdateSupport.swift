@@ -310,9 +310,9 @@ private final class UpdateWindowModel: ObservableObject {
         let json = """
         {
           "id": 999999,
-          "tag_name": "v1.1.0",
-          "name": "vRemoter 1.1.0",
-          "body": "- 新增 Chromecast Voice Remote 支持\\n- 新增 X6 与 Chromecast 按键映射\\n- 豆包语音触发键可选择 Option、Command、Control、Shift 或 Fn\\n- 优化映射启用时的原始按键拦截",
+          "tag_name": "v1.1.1",
+          "name": "vRemoter 1.1.1",
+          "body": "- 修复 Chromecast 短按偶尔未持续开启遥控器麦克风的问题\\n- 修复电脑 Option 关闭后旧状态可能重新开启遥控器音频的问题\\n- 改进双遥控器会话隔离与开麦确认\\n- 修复 X6 第一次短按可能被误判的问题",
           "html_url": "https://updates.vincentstudio.org/vremoter/",
           "draft": false,
           "prerelease": false,

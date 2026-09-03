@@ -29,8 +29,8 @@ Spaceship DNS
 - `https://vremoter.vincentstudio.org/` 已在马来西亚服务器通过 Caddy 提供服务。
 - `https://updates.vincentstudio.org/vremoter/`、`releases.json` 与 `commerce.json` 已通过公网 HTTPS 和 CORS 验证。
 - TLS 证书由 Caddy 自动申请和续期；首次证书为 Let's Encrypt。
-- 待上传版本为 1.1.0：首次安装使用 PKG，已安装过驱动的用户可使用 DMG 只更新 APP。
-- 1.1.0 新增 Chromecast Voice Remote、按型号保存的按键映射，以及可配置的豆包语音触发键。
+- 待上传版本为 1.1.1：首次安装使用 PKG，已安装过驱动的用户可使用 DMG 只更新 APP。
+- 1.1.1 修复 Chromecast 短按间歇性不开启遥控器麦克风、旧状态重新开音频和 X6 首次短按误判，并改进双遥控器会话隔离。
 - 更新清单必须最后替换，避免用户在安装包上传完成前收到新版本提示。
 - APP 与官网购买入口已暂停；远程配置中没有启用且有效的店铺时，APP 自动隐藏入口。
 - 当前 PKG 尚未完成 Developer ID 签名与公证，下载页必须保留明确提示；完成签名、公证和实机验证后再替换同版本文件或发布新版本。
@@ -79,8 +79,8 @@ Spaceship DNS
 
 ```json
 {
-  "name": "vRemoter-1.1.0.dmg",
-  "browser_download_url": "https://updates.vincentstudio.org/vremoter/vRemoter-1.1.0.dmg",
+  "name": "vRemoter-<version>.dmg",
+  "browser_download_url": "https://updates.vincentstudio.org/vremoter/vRemoter-<version>.dmg",
   "digest": "sha256:..."
 }
 ```
@@ -97,14 +97,18 @@ Spaceship DNS
 
 ## 6. 发布前检查表
 
-- [ ] GitHub 仓库为 Public，官网与仓库互相链接。
-- [ ] `../marketing/` 未进入 Git 暂存区。
-- [ ] APP 更新地址和购买配置地址为 `updates.vincentstudio.org`。
-- [ ] 自测和 Release 构建通过。
-- [ ] APP、驱动、PKG/DMG 签名与公证通过。
-- [ ] BlackHole 驱动许可路线已解决。
-- [ ] 新机器 PKG 首装通过。
-- [ ] 旧机器 DMG 覆盖升级通过。
-- [ ] 自动更新按驱动标记选择正确安装包。
-- [ ] 官网、下载页、更新日志与二维码验证通过。
-- [ ] Obsidian 项目档案已更新。
+在本项目中，用户只要说“发版”，默认执行本节全部流程。小版本只更新版本信息和 Release Notes，不重做介绍页或 Marketing 素材；大版本再根据功能变化更新介绍页截图、文案和 Marketing 素材。
+
+- [ ] 发版前审计：只暂存明确白名单，排除 `../marketing/`、内部运营材料、敏感信息与用户无关改动。
+- [ ] 固化 `VERSION`、`CFBundleShortVersionString` 与递增构建号。
+- [ ] 更新 APP 内升级提示所读取的 `Server/releases.json` 和更新说明。
+- [ ] 更新 `CHANGELOG.md`、README 当前版本和 GitHub Release Notes；小版本不重做 README 介绍结构。
+- [ ] 更新官网/下载页版本号与小版本更新日志；大版本才按需更新介绍页截图、文案和 Marketing 素材。
+- [ ] 运行自动测试、Release 构建、签名结构和安装包内容检查。
+- [ ] 始终生成 PKG 给首次安装用户；驱动未变时同时生成 DMG，并把 `driver_update_required` 设为 `false`。
+- [ ] 生成单一服务器上传 ZIP、SHA-256 和可复制 SSH 替换命令；`releases.json` 必须最后替换。
+- [ ] 提交并推送明确白名单，打 Tag，创建不附安装包的 GitHub Release。
+- [ ] 部署后验证公网版本清单、APP 升级提示、PKG/DMG、官网更新日志与 GitHub Release。
+- [ ] 更新 Obsidian 项目状态和本发版 SOP。
+
+长期发布阻断项仍需单独跟踪：Developer ID 签名与公证、BlackHole 驱动许可路线、新机 PKG 首装和旧机 DMG 覆盖升级。未完成时不得在发布说明中声称已公证或已完成全量安装验证。

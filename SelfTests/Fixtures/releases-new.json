@@ -1,17 +1,24 @@
 [
   {
-    "id": 1100,
-    "tag_name": "v1.1.0",
-    "name": "vRemoter 1.1.0",
-    "body": "- Chromecast Voice Remote\n- Per-model key mapping\n- Configurable voice trigger",
-    "html_url": "https://github.com/VincentKingHsu/vRemoter/releases/tag/v1.1.0",
+    "id": 1110,
+    "tag_name": "v1.1.1",
+    "name": "vRemoter 1.1.1",
+    "body": "- Chromecast tap reliability\n- Two-remote session isolation\n- X6 first-tap fix",
+    "html_url": "https://github.com/VincentKingHsu/vRemoter/releases/tag/v1.1.1",
     "draft": false,
     "prerelease": false,
+    "driver_update_required": false,
     "assets": [
       {
-        "id": 2100,
-        "name": "vRemoter-1.1.0.pkg",
-        "browser_download_url": "https://github.com/VincentKingHsu/vRemoter/releases/download/v1.1.0/vRemoter-1.1.0.pkg",
+        "id": 2111,
+        "name": "vRemoter-1.1.1.pkg",
+        "browser_download_url": "https://updates.vincentstudio.org/vremoter/vRemoter-1.1.1.pkg",
+        "digest": "sha256:0000000000000000000000000000000000000000000000000000000000000000"
+      },
+      {
+        "id": 2112,
+        "name": "vRemoter-1.1.1.dmg",
+        "browser_download_url": "https://updates.vincentstudio.org/vremoter/vRemoter-1.1.1.dmg",
         "digest": "sha256:0000000000000000000000000000000000000000000000000000000000000000"
       }
     ]

@@ -38,6 +38,7 @@ final class BLEBridge: NSObject {
     /// from a host-requested persistent stream.
     var onAudioStarted: ((UInt8 /* reason */, Int /* sampleRate */) -> Void)?
     var onAudioStopped: ((UInt8 /* reason */) -> Void)?
+    var onMicrophoneOpenFailed: ((UInt16 /* code */) -> Void)?
     /// Called when the device connection state changes.
     var onConnectionChanged: ((Bool) -> Void)?
     /// Audio level meter update; arg is dBFS in [-60, 0].
@@ -135,24 +136,36 @@ final class BLEBridge: NSObject {
         }
     }
 
-    func openMicrophone() {
-        guard !isStreaming else { return }
-        let now = Date()
-        guard now.timeIntervalSince(lastMicOpenAt) >= 0.35 else {
-            print("[\(logTag)] micOpen duplicate suppressed")
-            return
+    @discardableResult
+    func openMicrophone(
+        bypassDebounce: Bool = false
+    ) -> RemoteMicrophoneOpenResult {
+        guard !isStreaming else { return .alreadyStreaming }
+        guard peripheral != nil, commandChar != nil else {
+            print("[\(logTag)] micOpen waiting for writable characteristic")
+            return .retryAfter(0.15)
         }
-        lastMicOpenAt = now
+        let now = Date()
+        let elapsed = now.timeIntervalSince(lastMicOpenAt)
+        guard bypassDebounce || elapsed >= 0.35 else {
+            print("[\(logTag)] micOpen duplicate suppressed")
+            return .retryAfter(max(0.01, 0.35 - elapsed))
+        }
         do {
             protocolHandler.prepareForAudioStream()
             pendingAudioSyncCount = 0
-            writeCommand(try protocolHandler.micOpenCommand())
+            guard writeCommand(try protocolHandler.micOpenCommand()) else {
+                return .retryAfter(0.15)
+            }
+            lastMicOpenAt = now
             print("[\(logTag)] TX micOpen requested by gesture")
+            return .sent
         } catch {
             print(
                 "[\(logTag)] micOpen gesture error: " +
                 error.localizedDescription
             )
+            return .failed(error.localizedDescription)
         }
     }
 
@@ -297,14 +310,18 @@ final class BLEBridge: NSObject {
             == true
     }
 
-    private func writeCommand(_ data: Data) {
-        guard let p = peripheral, let c = commandChar else { return }
+    @discardableResult
+    private func writeCommand(_ data: Data) -> Bool {
+        guard let p = peripheral, let c = commandChar else { return false }
         if c.properties.contains(.write) {
             p.writeValue(data, for: c, type: .withResponse)
+            return true
         } else if c.properties.contains(.writeWithoutResponse) {
             p.writeValue(data, for: c, type: .withoutResponse)
+            return true
         } else {
             print("[\(logTag)] command characteristic is not writable")
+            return false
         }
     }
 
@@ -657,6 +674,7 @@ extension BLEBridge: CBPeripheralDelegate {
             )
         case .micOpenError(let code):
             print("[\(logTag)] MIC_OPEN 错误: 0x\(String(format: "%04x", code))")
+            onMicrophoneOpenFailed?(code)
         case .unknown(let d):
             // Capabilities-handshake uses 0x0B on the control char sometimes;
             // absorb instead of failing noisily.

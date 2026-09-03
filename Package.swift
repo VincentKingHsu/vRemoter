@@ -16,7 +16,10 @@ let package = Package(
             dependencies: [
                 .product(name: "TelemetryDeck", package: "SwiftSDK")
             ],
-            path: "Sources/vRemote"
+            path: "Sources/vRemote",
+            swiftSettings: [
+                .define("DEBUG", .when(configuration: .debug))
+            ]
         )
     ]
 )

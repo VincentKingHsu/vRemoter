@@ -234,7 +234,9 @@ private enum ConsolePage: String, CaseIterable, Identifiable {
 
 @MainActor
 private final class ConsoleViewModel: ObservableObject {
-    @Published var selectedPage: ConsolePage = .mixer
+    @Published var selectedPage: ConsolePage = CommandLine.arguments.contains(
+        "--mapping-window-demo"
+    ) ? .mapping : .mixer
     @Published var status = "启动中"
     @Published var hidConnected = false
     @Published var bleConnected = false
@@ -972,6 +974,7 @@ private struct KeyMappingView: View {
                 }
                 Spacer()
             }
+            .padding(.top, 14)
             .frame(width: 130)
             Divider().overlay(ConsoleTheme.lineSoft)
             VStack(alignment: .leading, spacing: 8) {
@@ -1303,15 +1306,11 @@ private struct RemoteProductImage: View {
         Group {
             if let image = RemoteImageAsset.image(for: kind) {
                 if kind == .chromecast {
-                    // The linked Google asset includes wide callout labels.
-                    // Crop only its transparent side callouts so the official
-                    // remote drawing remains legible at inspector size.
                     Image(nsImage: image)
                         .resizable()
                         .interpolation(.high)
-                        .aspectRatio(contentMode: .fill)
-                        .frame(width: 84, height: 260)
-                        .clipped()
+                        .aspectRatio(contentMode: .fit)
+                        .frame(width: 112, height: 304)
                 } else {
                     Image(nsImage: image)
                         .resizable()
@@ -1330,7 +1329,7 @@ private struct RemoteProductImage: View {
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
         }
-        .frame(height: 260)
+        .frame(height: kind == .chromecast ? 304 : 260)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(kind.title)
     }
