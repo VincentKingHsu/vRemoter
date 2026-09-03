@@ -52,6 +52,10 @@ if [[ -d "$SCRIPT_DIR/Resources/Commerce" ]]; then
   ditto "$SCRIPT_DIR/Resources/Commerce" \
     "$CONTENTS/Resources/Commerce"
 fi
+if [[ -d "$SCRIPT_DIR/Resources/RemoteImages" ]]; then
+  ditto "$SCRIPT_DIR/Resources/RemoteImages" \
+    "$CONTENTS/Resources/RemoteImages"
+fi
 chmod 755 "$CONTENTS/MacOS/vRemote"
 # SwiftPM resource bundles may contain read-only privacy manifests. The app
 # bundle is a disposable build artifact, so make it owner-writable before

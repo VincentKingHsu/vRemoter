@@ -9,10 +9,10 @@ import Foundation
 final class X6SearchSuppressor {
     private var tapPort: CFMachPort?
     private var armedUntil = Date.distantPast
-    private var optionKeysDown = Set<Int64>()
+    private var triggerKeysDown = Set<Int64>()
     private(set) var isAvailable = false
-    var onOptionDownObserved: ((Bool) -> Void)?
-    var onOptionUpObserved: ((Bool) -> Void)?
+    var onTriggerDownObserved: ((Bool) -> Void)?
+    var onTriggerUpObserved: ((Bool) -> Void)?
     // X6 can deliver the HID report roughly a second before macOS emits the
     // corresponding native Search action. Keep the gate open long enough for
     // that delayed event, while still limiting suppression to the current
@@ -73,12 +73,11 @@ final class X6SearchSuppressor {
             let isSearchKey =
                 (type == .keyDown || type == .keyUp) && keyCode == 0xB1
             let isSearchSystemEvent = type.rawValue == 14
-            let isDelayedX6Option = type == .flagsChanged && (
-                keyCode == Int64(VK.option)
-                    || keyCode == Int64(VK.rightOption)
-            )
+            let trigger = AppStorage.inputTriggerKey
+            let isDelayedX6Trigger = type == .flagsChanged
+                && trigger.keyCodes.contains(keyCode)
             if isArmed && (
-                isSearchKey || isSearchSystemEvent || isDelayedX6Option
+                isSearchKey || isSearchSystemEvent || isDelayedX6Trigger
             ) {
                 print(
                     "[X6-FILTER] suppressed type=\(type.rawValue) " +
@@ -87,7 +86,7 @@ final class X6SearchSuppressor {
                 return nil
             }
 
-            suppressor.observeOptionEvent(
+            suppressor.observeTriggerEvent(
                 type: type,
                 event: event,
                 isSynthetic: false
@@ -124,16 +123,21 @@ final class X6SearchSuppressor {
         }
     }
 
+    func triggerConfigurationDidChange() {
+        triggerKeysDown.removeAll()
+        print("[INPUT-TRIGGER] listening for \(AppStorage.inputTriggerKey.title)")
+    }
+
     func stop() {
         armedUntil = .distantPast
-        optionKeysDown.removeAll()
+        triggerKeysDown.removeAll()
         if let tapPort {
             CGEvent.tapEnable(tap: tapPort, enable: false)
         }
         tapPort = nil
     }
 
-    private func observeOptionEvent(
+    private func observeTriggerEvent(
         type: CGEventType,
         event: CGEvent,
         isSynthetic: Bool
@@ -143,9 +147,8 @@ final class X6SearchSuppressor {
         // before posting. Observing them again here would execute the same
         // microphone transition twice.
         guard !isSynthetic else { return }
-        guard keyCode == Int64(VK.option)
-                || keyCode == Int64(VK.rightOption)
-        else { return }
+        let trigger = AppStorage.inputTriggerKey
+        guard trigger.keyCodes.contains(keyCode) else { return }
 
         // macOS normally reports modifier edges as `flagsChanged`, but on
         // some keyboards/input-method paths the DOWN edge arrives as a plain
@@ -162,10 +165,10 @@ final class X6SearchSuppressor {
             // When another Option key remains held, maskAlternate stays set
             // even while this key is released. The per-key set is therefore
             // a more reliable release signal than the aggregate flag alone.
-            if optionKeysDown.contains(keyCode) {
+            if triggerKeysDown.contains(keyCode) {
                 isDown = false
             } else {
-                guard event.flags.contains(.maskAlternate) else {
+                guard event.flags.contains(trigger.flag) else {
                     print(
                         "[OPTION-RAW] orphan UP ignored keyCode=0x" +
                         String(keyCode, radix: 16)
@@ -184,11 +187,11 @@ final class X6SearchSuppressor {
             "edge=\(isDown ? "DOWN" : "UP")"
         )
         if isDown {
-            guard optionKeysDown.insert(keyCode).inserted else { return }
-            onOptionDownObserved?(isSynthetic)
+            guard triggerKeysDown.insert(keyCode).inserted else { return }
+            onTriggerDownObserved?(isSynthetic)
         } else {
-            guard optionKeysDown.remove(keyCode) != nil else { return }
-            onOptionUpObserved?(isSynthetic)
+            guard triggerKeysDown.remove(keyCode) != nil else { return }
+            onTriggerUpObserved?(isSynthetic)
         }
     }
 }

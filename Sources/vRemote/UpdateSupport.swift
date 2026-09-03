@@ -310,9 +310,9 @@ private final class UpdateWindowModel: ObservableObject {
         let json = """
         {
           "id": 999999,
-          "tag_name": "v1.0.1",
-          "name": "vRemoter 1.0.1",
-          "body": "- 全新的版本与更新窗口\\n- GitHub 自动更新检查\\n- 更清晰的原生尺寸控制台",
+          "tag_name": "v1.1.0",
+          "name": "vRemoter 1.1.0",
+          "body": "- 新增 Chromecast Voice Remote 支持\\n- 新增 X6 与 Chromecast 按键映射\\n- 豆包语音触发键可选择 Option、Command、Control、Shift 或 Fn\\n- 优化映射启用时的原始按键拦截",
           "html_url": "https://updates.vincentstudio.org/vremoter/",
           "draft": false,
           "prerelease": false,
@@ -360,10 +360,14 @@ final class UpdateWindowController: NSWindowController, NSWindowDelegate {
             blue: 0.067,
             alpha: 1
         )
+        window.appearance = NSAppearance(named: .darkAqua)
         window.minSize = size
         window.maxSize = size
         window.center()
-        window.contentView = NSHostingView(rootView: VersionUpdateView(model: model))
+        window.contentView = NSHostingView(
+            rootView: VersionUpdateView(model: model)
+                .preferredColorScheme(.dark)
+        )
         super.init(window: window)
         window.delegate = self
     }

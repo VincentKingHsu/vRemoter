@@ -5,6 +5,7 @@ enum AppStorage {
     static let recordingEnabledKey = "recordingEnabled"
     static let macInputEnabledKey = "macInputEnabled"
     static let remoteInputEnabledKey = "remoteInputEnabled"
+    static let inputTriggerKeyKey = "inputTriggerKey"
 
     static let logsDirectory: URL = {
         FileManager.default.homeDirectoryForCurrentUser
@@ -32,6 +33,7 @@ enum AppStorage {
             recordingEnabledKey: false,
             macInputEnabledKey: true,
             remoteInputEnabledKey: true,
+            inputTriggerKeyKey: InputTriggerKey.option.rawValue,
         ])
         ensureDirectory(logsDirectory)
         ensureDirectory(applicationSupportDirectory)
@@ -58,6 +60,16 @@ enum AppStorage {
     static var remoteInputEnabled: Bool {
         get { UserDefaults.standard.bool(forKey: remoteInputEnabledKey) }
         set { UserDefaults.standard.set(newValue, forKey: remoteInputEnabledKey) }
+    }
+
+    static var inputTriggerKey: InputTriggerKey {
+        get {
+            let raw = UserDefaults.standard.string(forKey: inputTriggerKeyKey)
+            return InputTriggerKey(rawValue: raw ?? "") ?? .option
+        }
+        set {
+            UserDefaults.standard.set(newValue.rawValue, forKey: inputTriggerKeyKey)
+        }
     }
 
     static func ensureDirectory(_ url: URL) {

@@ -4,55 +4,76 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="color-scheme" content="dark">
+  <meta name="description" content="vRemoter 最新版本、安装包与更新日志。">
   <title>vRemoter · 版本与下载</title>
   <style>
-    :root{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC",sans-serif;color:#f0f2f4;background:#0e0f11}
-    body{margin:0}.wrap{width:min(760px,calc(100% - 40px));margin:0 auto;padding:72px 0}a{color:#4fd187}h1{font-size:42px;margin:0 0 12px}.lead{color:#9aa0a8;line-height:1.7}.panel{margin-top:34px;padding:24px;border:1px solid #34373c;border-radius:10px;background:#15171a}.status{color:#f59c31;font-weight:700}.downloads{display:grid;grid-template-columns:1fr;gap:12px;margin-top:22px}.download{padding:18px;border:1px solid #34373c;border-radius:8px}.download h2{font-size:18px}.download p{color:#9aa0a8;line-height:1.6}.download a{display:inline-block;padding:10px 13px;border-radius:7px;background:#4fd187;color:#07120c;font-weight:750;text-decoration:none}.notice{margin-top:16px;padding:14px;border-left:3px solid #f59c31;background:#1b1814;color:#c8c1b7;line-height:1.6}.digest{overflow-wrap:anywhere;font:12px ui-monospace,SFMono-Regular,Menlo,monospace;color:#777f88}.back{display:inline-block;margin-top:32px}@media(max-width:640px){h1{font-size:34px}}
+    :root{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC",sans-serif;color:#f4f5f6;background:#0b0c0e;--surface:#141619;--line:#30343a;--muted:#9da3ad;--green:#55d88c;--amber:#f4a447}
+    *{box-sizing:border-box}body{margin:0}a{color:inherit}.wrap{width:min(940px,calc(100% - 40px));margin:0 auto;padding:74px 0 100px}.toplinks{display:flex;gap:20px;justify-content:flex-end;color:var(--muted);font-size:13px}.toplinks a:hover{color:var(--green)}.eyebrow{margin:46px 0 12px;color:var(--green);font-size:12px;font-weight:800;letter-spacing:.09em;text-transform:uppercase}h1{max-width:700px;margin:0 0 18px;font-size:clamp(42px,7vw,70px);line-height:1.02;letter-spacing:-.045em}h2{margin:0 0 14px;font-size:27px;letter-spacing:-.025em}h3{margin:0 0 8px;font-size:18px}p{color:var(--muted);line-height:1.7}.lead{max-width:700px;font-size:18px}.panel{margin-top:42px;padding:28px;border:1px solid var(--line);border-radius:14px;background:var(--surface)}.version-row{display:flex;align-items:end;justify-content:space-between;gap:20px}.version-label{margin:0;color:var(--green);font-size:13px;font-weight:800}.release-date{margin:0;font-size:12px}.notes{margin:20px 0 0;padding:0;list-style:none}.notes li{position:relative;padding:11px 0 11px 26px;border-top:1px solid rgba(255,255,255,.08);color:#d8dce1;line-height:1.55}.notes li:before{content:"✓";position:absolute;left:0;color:var(--green);font-weight:800}.downloads{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;margin-top:26px}.download{padding:22px;border:1px solid var(--line);border-radius:10px;background:#0d0f11}.download .kind{display:inline-block;margin-bottom:30px;color:var(--amber);font-size:11px;font-weight:800}.download p{min-height:82px;font-size:14px}.download a{display:inline-flex;min-height:44px;padding:0 15px;align-items:center;border-radius:7px;background:var(--green);color:#07120c;font-weight:750;text-decoration:none}.digest{min-height:0!important;margin:16px 0 0;overflow-wrap:anywhere;font:11px ui-monospace,SFMono-Regular,Menlo,monospace;color:#747b84}.notice{margin:18px 0 0;padding:16px;border:1px solid #5f4b2f;border-radius:8px;background:#191611;color:#cfc5b6;font-size:13px;line-height:1.65}.history{margin-top:76px}.history-list{margin-top:22px;border-top:1px solid var(--line)}.history-item{padding:23px 0;border-bottom:1px solid var(--line);display:grid;grid-template-columns:150px 1fr;gap:28px}.history-item strong{font-size:16px}.history-item time{display:block;margin-top:6px;color:var(--muted);font-size:11px}.history-item ul{margin:0;padding-left:20px;color:#d8dce1;line-height:1.7}.footer{margin-top:58px;padding-top:25px;border-top:1px solid var(--line);display:flex;justify-content:space-between;gap:20px;color:var(--muted);font-size:12px}.footer a{color:var(--green)}.loading{color:var(--amber);font-weight:700}@media(max-width:640px){.wrap{width:calc(100% - 28px);padding-top:28px}.toplinks{justify-content:flex-start}.eyebrow{margin-top:55px}.downloads,.history-item{grid-template-columns:1fr}.download p{min-height:0}.version-row,.footer{align-items:flex-start;flex-direction:column}.history{margin-top:58px}}
   </style>
 </head>
 <body>
   <main class="wrap">
-    <p class="status">Vincent Studio</p>
-    <h1>vRemoter 版本与下载</h1>
-    <p class="lead">首次安装请选择 PKG，它会一次安装 vRemoter APP 与音频驱动。已经安装过驱动的用户，可在驱动没有变化时使用 DMG 只更新 APP。</p>
-    <section class="panel">
-      <p id="release-status" class="status">正在读取最新版本…</p>
+    <nav class="toplinks" aria-label="站点导航"><a href="https://vremoter.vincentstudio.org">官网</a><a href="https://github.com/VincentKingHsu/vRemoter">GitHub 源码 ↗</a></nav>
+    <p class="eyebrow">Vincent Studio · macOS</p>
+    <h1>版本与下载</h1>
+    <p class="lead">首次安装请选择 PKG，它会一次安装 vRemoter APP 与音频驱动。已经装过驱动、只想更新软件时请选择 DMG。</p>
+
+    <section class="panel" aria-live="polite">
+      <div class="version-row"><div><p class="version-label">当前稳定版</p><h2 id="release-name">正在读取…</h2></div><p id="release-date" class="release-date"></p></div>
+      <ul id="latest-notes" class="notes"></ul>
       <div id="downloads" class="downloads"></div>
-      <p class="notice">当前 PKG 尚未完成 Apple Developer ID 签名与公证。macOS 可能提示无法验证开发者；这是签名状态提示，不代表下载损坏。正式广泛分发前仍会补齐签名与公证。</p>
+      <p class="notice">当前安装包尚未完成 Apple Developer ID 签名与公证。macOS 可能显示“无法验证开发者”；这是签名状态提示。正式广泛分发前仍建议补齐签名、公证和新机器首装验证。</p>
     </section>
-    <a class="back" href="https://vremoter.vincentstudio.org">← 返回 vRemoter 官网</a>
+
+    <section class="history">
+      <p class="version-label">CHANGELOG</p>
+      <h2>历史更新日志</h2>
+      <div id="history-list" class="history-list"><p class="loading">正在读取版本历史…</p></div>
+    </section>
+
+    <footer class="footer"><span>© 2026 Vincent Studio</span><span><a href="https://vremoter.vincentstudio.org">返回官网</a> · <a href="https://github.com/VincentKingHsu/vRemoter">查看源码</a></span></footer>
   </main>
   <script>
-    fetch('releases.json', {cache: 'no-store'})
-      .then((response) => response.ok ? response.json() : Promise.reject())
-      .then((releases) => releases.find((release) => !release.draft && !release.prerelease))
-      .then((release) => {
-        if (!release) return;
-        document.querySelector('#release-status').textContent = `${release.name} · ${release.body || ''}`;
+    const textLines = (value = '') => value.split(/\r?\n/).map((line) => line.replace(/^\s*[-*•]\s*/, '').trim()).filter(Boolean);
+    const safeDate = (value) => value ? new Intl.DateTimeFormat('zh-CN', {year:'numeric', month:'long', day:'numeric'}).format(new Date(value)) : '';
+    const assetCard = (asset, extension) => {
+      const article = document.createElement('article');
+      article.className = 'download';
+      const digest = (asset.digest || '').replace(/^sha256:/i, '');
+      const firstInstall = extension === 'pkg';
+      article.innerHTML = `<span class="kind">${firstInstall ? '首次安装 · APP + 驱动' : '已有驱动 · 仅更新 APP'}</span><h3>${extension.toUpperCase()}</h3><p>${firstInstall ? '适合第一次安装，或者更新说明明确写有驱动变化时使用。' : '适合已经成功安装过 PKG、且本次驱动没有变化的用户。'}</p><a href="${asset.browser_download_url}">下载 ${asset.name}</a>${digest ? `<p class="digest">SHA-256：${digest}</p>` : ''}`;
+      return article;
+    };
+
+    fetch('releases.json', {cache:'no-store'})
+      .then((response) => response.ok ? response.json() : Promise.reject(new Error('manifest')))
+      .then((allReleases) => {
+        const releases = allReleases.filter((release) => !release.draft && !release.prerelease);
+        const latest = releases[0];
+        if (!latest) throw new Error('empty');
+        document.querySelector('#release-name').textContent = latest.name;
+        document.querySelector('#release-date').textContent = safeDate(latest.published_at);
+        const latestNotes = document.querySelector('#latest-notes');
+        textLines(latest.body).forEach((line) => { const item = document.createElement('li'); item.textContent = line; latestNotes.appendChild(item); });
         const downloads = document.querySelector('#downloads');
-        const descriptions = {
-          pkg: '包含 vRemoter APP 和 vRemote 音频驱动，适合首次安装；以后驱动有变化时也使用 PKG。',
-          dmg: '只更新 vRemoter APP，不重新安装或修改音频驱动。'
-        };
-        for (const extension of ['pkg', 'dmg']) {
-          const asset = release.assets.find((item) => item.name.toLowerCase().endsWith(`.${extension}`));
-          if (!asset) continue;
-          const article = document.createElement('article');
-          article.className = 'download';
-          const digest = asset.digest?.replace(/^sha256:/i, '') || '';
-          article.innerHTML = `
-            <h2>${extension.toUpperCase()} · ${extension === 'pkg' ? '首次安装' : '仅更新 APP'}</h2>
-            <p>${descriptions[extension]}</p>
-            <a href="${asset.browser_download_url}">下载 ${asset.name}</a>
-            ${digest ? `<p class="digest">SHA-256：${digest}</p>` : ''}`;
-          downloads.appendChild(article);
-        }
-        if (!downloads.children.length) {
-          document.querySelector('#release-status').textContent = '当前版本暂时没有可下载文件';
-        }
+        ['pkg','dmg'].forEach((extension) => {
+          const asset = latest.assets.find((item) => item.name.toLowerCase().endsWith(`.${extension}`));
+          if (asset) downloads.appendChild(assetCard(asset, extension));
+        });
+        if (!downloads.children.length) downloads.innerHTML = '<p class="loading">当前版本暂时没有可下载文件。</p>';
+        const history = document.querySelector('#history-list');
+        history.innerHTML = '';
+        releases.forEach((release) => {
+          const item = document.createElement('article');
+          item.className = 'history-item';
+          const bullets = textLines(release.body).map((line) => `<li>${line}</li>`).join('');
+          item.innerHTML = `<div><strong>${release.name}</strong><time>${safeDate(release.published_at)}</time></div><ul>${bullets || '<li>版本维护更新</li>'}</ul>`;
+          history.appendChild(item);
+        });
       })
       .catch(() => {
-        document.querySelector('#release-status').textContent = '暂时无法读取下载信息，请稍后刷新';
+        document.querySelector('#release-name').textContent = '暂时无法读取下载信息';
+        document.querySelector('#history-list').innerHTML = '<p class="loading">请稍后刷新，或前往 GitHub 查看源码与版本记录。</p>';
       });
   </script>
 </body>

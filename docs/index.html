@@ -4,78 +4,99 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="color-scheme" content="dark">
-  <meta name="description" content="vRemoter turns an X6 voice remote into a dual-microphone Vibe Coding controller for macOS.">
-  <title>vRemoter · 为 Vibe Coding 而生</title>
+  <meta name="description" content="vRemoter turns supported Bluetooth voice remotes into a dual-microphone voice input and programmable macOS controller for Doubao.">
+  <title>vRemoter · 蓝牙语音遥控器的 macOS 控制台</title>
   <link rel="icon" href="assets/brand/vremoter-logo.png">
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
   <header class="topbar">
-    <a class="brand" href="#top" aria-label="vRemoter">
-      <img src="assets/brand/vremoter-logo.png" alt="">
-      <span>vRemoter</span>
-    </a>
+    <a class="brand" href="#top" aria-label="vRemoter"><img src="assets/brand/vremoter-logo.png" alt=""><span>vRemoter</span></a>
     <nav class="top-actions" aria-label="Primary">
+      <a href="#mapping" data-zh="按键映射" data-en="Key Mapping">按键映射</a>
       <a href="#setup" data-zh="设置" data-en="Setup">设置</a>
-      <!-- 购买入口暂停开放；恢复销售时取消注释，并同步恢复下方 #remote 区块。 -->
-      <!--
-      <a href="#remote" data-zh="购买遥控器" data-en="Buy Remote">购买遥控器</a>
-      -->
-      <a href="#support" data-zh="支持" data-en="Support">支持</a>
+      <a href="#release" data-zh="本次更新" data-en="What’s New">本次更新</a>
       <a href="https://github.com/VincentKingHsu/vRemoter" target="_blank" rel="noopener" data-zh="GitHub 源码 ↗" data-en="GitHub Source ↗">GitHub 源码 ↗</a>
-      <div class="language-switch" role="group" aria-label="Language">
-        <button type="button" data-set-language="zh" class="active">中</button>
-        <button type="button" data-set-language="en">EN</button>
-      </div>
-      <a class="download-button" href="https://updates.vincentstudio.org/vremoter/" data-zh="首次安装 v1.0.1" data-en="First install v1.0.1">首次安装 v1.0.1</a>
+      <div class="language-switch" role="group" aria-label="Language"><button type="button" data-set-language="zh" class="active">中</button><button type="button" data-set-language="en">EN</button></div>
+      <a class="download-button" href="https://updates.vincentstudio.org/vremoter/" data-zh="下载 v1.1.0" data-en="Download v1.1.0">下载 v1.1.0</a>
     </nav>
   </header>
 
   <main id="top">
-    <section class="hero" aria-label="vRemoter hero">
-      <img data-localized-hero src="assets/commerce/x6-vibe-coding-hero-v2.png" alt="vRemoter 控制台与 X6 Vibe Coding 遥控器">
-    </section>
-
-    <section class="intro section-inner">
-      <p class="eyebrow">vRemoter 1.0.1 · macOS</p>
-      <h1 data-zh="把声音变成你的 Vibe Coding 控制器" data-en="Turn your voice into a Vibe Coding controller">把声音变成你的 Vibe Coding 控制器</h1>
-      <p class="lead" data-zh="用 X6 遥控器的语音键控制豆包输入法，把遥控器麦克风和 MacBook 麦克风混合成同一个输入设备。离开键盘，也能继续说、继续写、继续改。" data-en="Use the X6 voice button to control Doubao Input Method, while mixing the remote and MacBook microphones into one input device. Step away from the keyboard without stepping away from your code.">用 X6 遥控器的语音键控制豆包输入法，把遥控器麦克风和 MacBook 麦克风混合成同一个输入设备。离开键盘，也能继续说、继续写、继续改。</p>
-      <div class="hero-actions">
-        <a class="primary-button" href="https://updates.vincentstudio.org/vremoter/" data-zh="首次安装（含驱动）" data-en="First install (driver included)">首次安装（含驱动）</a>
-        <a class="secondary-link" href="https://updates.vincentstudio.org/vremoter/" data-zh="版本与下载 ↗" data-en="Versions & downloads ↗">版本与下载 ↗</a>
-        <a class="secondary-link" href="https://github.com/VincentKingHsu/vRemoter" target="_blank" rel="noopener" data-zh="查看 GitHub 源码 ↗" data-en="View source on GitHub ↗">查看 GitHub 源码 ↗</a>
-      </div>
-    </section>
-
-    <section class="product-band">
-      <div class="section-inner product-layout">
-        <div>
-          <p class="eyebrow" data-zh="真实控制台" data-en="The real console">真实控制台</p>
-          <h2 data-zh="连接、声音、权限，一屏看清" data-en="Connection, levels, and permissions at a glance">连接、声音、权限，一屏看清</h2>
-          <p data-zh="原生尺寸渲染的 macOS 控制台会实时显示两路麦克风电平、混合输出、X6 连接状态，以及每一项必要权限。只有状态异常时才出现处理按钮。" data-en="The native macOS console shows both microphone levels, mixed output, X6 connection state, and every required permission. Action buttons appear only when something needs attention.">原生尺寸渲染的 macOS 控制台会实时显示两路麦克风电平、混合输出、X6 连接状态，以及每一项必要权限。只有状态异常时才出现处理按钮。</p>
+    <section class="hero section-inner">
+      <div class="hero-copy">
+        <p class="eyebrow">vRemoter 1.1.0 · macOS</p>
+        <h1 data-zh="遥控器不只负责播放，也能控制你的输入。" data-en="Your remote can control more than playback.">遥控器不只负责播放，也能控制你的输入。</h1>
+        <p class="lead" data-zh="用 X6 或 Chromecast Voice Remote 控制豆包语音输入，把遥控器麦克风与 MacBook 麦克风混合起来，再把电视按键映射成真正有用的 Mac 操作。" data-en="Control Doubao voice input with an X6 or Chromecast Voice Remote, mix the remote and MacBook microphones, and turn TV buttons into useful Mac actions.">用 X6 或 Chromecast Voice Remote 控制豆包语音输入，把遥控器麦克风与 MacBook 麦克风混合起来，再把电视按键映射成真正有用的 Mac 操作。</p>
+        <div class="hero-actions">
+          <a class="primary-button" href="https://updates.vincentstudio.org/vremoter/" data-zh="首次安装（含驱动）" data-en="First install (driver included)">首次安装（含驱动）</a>
+          <a class="secondary-link" href="https://github.com/VincentKingHsu/vRemoter" target="_blank" rel="noopener" data-zh="查看源码 ↗" data-en="View source ↗">查看源码 ↗</a>
         </div>
-        <figure class="console-shot">
-          <img data-localized-console src="assets/commerce/vremoter-console.png" alt="vRemoter macOS 控制台">
-          <figcaption data-zh="vRemoter 1.0.1 主控制台" data-en="vRemoter 1.0.1 main console">vRemoter 1.0.1 主控制台</figcaption>
+        <p class="system-note" data-zh="适用于 macOS 12 及以上版本。当前针对豆包输入法。" data-en="For macOS 12 and later. Currently designed for Doubao Input Method.">适用于 macOS 12 及以上版本。当前针对豆包输入法。</p>
+      </div>
+      <figure class="app-shot hero-shot">
+        <img data-localized-audio src="assets/screenshots/vremoter-audio-1.1.0.png" alt="vRemoter 1.1.0 音频控制台">
+        <figcaption data-zh="真实运行界面：双麦混音、连接与权限状态" data-en="Live interface: dual-mic mixing, connection, and permissions">真实运行界面：双麦混音、连接与权限状态</figcaption>
+      </figure>
+    </section>
+
+    <section class="mapping-band" id="mapping">
+      <div class="section-inner mapping-layout">
+        <div class="mapping-copy">
+          <p class="eyebrow" data-zh="1.1.0 新功能" data-en="New in 1.1.0">1.1.0 新功能</p>
+          <h2 data-zh="把电视按键，换成你的 Mac 快捷键。" data-en="Turn TV buttons into your Mac shortcuts.">把电视按键，换成你的 Mac 快捷键。</h2>
+          <p data-zh="方向、确认、返回、Home、YouTube、Netflix、信源、音量等按键都可以按型号配置。映射启用时，vRemoter 会拦截原始动作，只发送你选择的新操作。" data-en="Configure navigation, Select, Back, Home, YouTube, Netflix, Input, volume, and more by remote model. When mapping is enabled, vRemoter intercepts the original action and sends only your assignment.">方向、确认、返回、Home、YouTube、Netflix、信源、音量等按键都可以按型号配置。映射启用时，vRemoter 会拦截原始动作，只发送你选择的新操作。</p>
+          <ul class="feature-list">
+            <li data-zh="内置方向键、Return、Escape、系统音量、Spotlight 等常用操作" data-en="Built-in arrows, Return, Escape, system volume, Spotlight, and more">内置方向键、Return、Escape、系统音量、Spotlight 等常用操作</li>
+            <li data-zh="可以直接录制自己的键盘组合键" data-en="Record your own keyboard shortcut">可以直接录制自己的键盘组合键</li>
+            <li data-zh="设置跟随型号，更换同型号遥控器无需重配" data-en="Settings follow the model, so same-model replacements need no reconfiguration">设置跟随型号，更换同型号遥控器无需重配</li>
+          </ul>
+        </div>
+        <figure class="app-shot mapping-shot">
+          <img data-localized-mapping src="assets/screenshots/vremoter-mapping-chromecast-1.1.0.png" alt="Chromecast Voice Remote 按键映射界面">
+          <figcaption data-zh="Chromecast Voice Remote 按键映射" data-en="Chromecast Voice Remote key mapping">Chromecast Voice Remote 按键映射</figcaption>
         </figure>
       </div>
     </section>
 
-    <section class="section-inner" id="workflow">
-      <p class="eyebrow" data-zh="工作方式" data-en="How it works">工作方式</p>
-      <h2 data-zh="三步完成一次语音输入" data-en="One voice session, three steps">三步完成一次语音输入</h2>
-      <div class="steps">
-        <article><span>01</span><h3 data-zh="按下语音键" data-en="Press the voice key">按下语音键</h3><p data-zh="X6 唤起豆包录音，并打开遥控器麦克风。" data-en="X6 starts Doubao recording and opens the remote microphone.">X6 唤起豆包录音，并打开遥控器麦克风。</p></article>
-        <article><span>02</span><h3 data-zh="两路声音合并" data-en="Mix both microphones">两路声音合并</h3><p data-zh="遥控器与 MacBook 麦克风进入 vRemoteDr 2ch。" data-en="Remote and MacBook audio are mixed into vRemoteDr 2ch.">遥控器与 MacBook 麦克风进入 vRemoteDr 2ch。</p></article>
-        <article><span>03</span><h3 data-zh="再按一次结束" data-en="Press again to stop">再按一次结束</h3><p data-zh="录音停止，声音通道关闭，继续下一步工作。" data-en="Recording stops, the route closes, and you move on.">录音停止，声音通道关闭，继续下一步工作。</p></article>
+    <section class="section-inner remote-section">
+      <div class="section-heading-row">
+        <div><p class="eyebrow" data-zh="已验证型号" data-en="Verified profiles">已验证型号</p><h2 data-zh="两款遥控器，各自保留自己的设置。" data-en="Two remotes, each with its own settings.">两款遥控器，各自保留自己的设置。</h2></div>
+        <p data-zh="X6 与 Chromecast Voice Remote 可以同时连接。支持按型号识别，不绑定你手上的某一只实体设备。" data-en="X6 and Chromecast Voice Remote can stay connected together. Profiles are identified by model, not one physical unit.">X6 与 Chromecast Voice Remote 可以同时连接。支持按型号识别，不绑定你手上的某一只实体设备。</p>
+      </div>
+      <div class="remote-grid">
+        <article class="remote-card">
+          <img class="x6-image" src="assets/remotes/x6-remote.png" alt="X6 Remote">
+          <div><h3>X6 Remote</h3><p>VID 1D5A · PID C081</p><span data-zh="语音、正面按键、背面键盘与鼠标透传" data-en="Voice, front buttons, keyboard, and mouse passthrough">语音、正面按键、背面键盘与鼠标透传</span></div>
+        </article>
+        <article class="remote-card">
+          <img class="chromecast-image" src="assets/remotes/chromecast-voice-remote.png" alt="Chromecast Voice Remote">
+          <div><h3>Chromecast Voice Remote</h3><p>VID 18D1 · PID 9450</p><span data-zh="短按切换、长按说话与完整按键映射" data-en="Tap-to-toggle, hold-to-talk, and key mapping">短按切换、长按说话与完整按键映射</span></div>
+        </article>
+      </div>
+      <p class="boundary-note" data-zh="支持范围以这里列出的 VID/PID 为准，不代表所有 Chromecast 遥控器型号。X6 鼠标模式切换键由设备固件内部处理。" data-en="Support is limited to the VID/PID profiles listed here and does not imply every Chromecast remote model. The X6 Mouse Mode switch is handled by its firmware.">支持范围以这里列出的 VID/PID 为准，不代表所有 Chromecast 遥控器型号。X6 鼠标模式切换键由设备固件内部处理。</p>
+    </section>
+
+    <section class="voice-band">
+      <div class="section-inner voice-layout">
+        <div>
+          <p class="eyebrow" data-zh="双麦语音输入" data-en="Dual-microphone input">双麦语音输入</p>
+          <h2 data-zh="说话时，不必决定站在哪一支麦克风旁边。" data-en="Speak without choosing which microphone to stand beside.">说话时，不必决定站在哪一支麦克风旁边。</h2>
+          <p data-zh="vRemoter 把遥控器和 MacBook 麦克风混合成豆包可识别的 vRemoteDr 2ch。语音触发键默认使用 Option，也可以改为 Command、Control、Shift 或 Fn。" data-en="vRemoter mixes the remote and MacBook microphones into vRemoteDr 2ch for Doubao. The voice trigger defaults to Option and can be changed to Command, Control, Shift, or Fn.">vRemoter 把遥控器和 MacBook 麦克风混合成豆包可识别的 vRemoteDr 2ch。语音触发键默认使用 Option，也可以改为 Command、Control、Shift 或 Fn。</p>
+        </div>
+        <div class="voice-modes">
+          <div><span>01</span><h3 data-zh="短按切换" data-en="Tap to toggle">短按切换</h3><p data-zh="第一次打开，第二次关闭。" data-en="First tap starts, second tap stops.">第一次打开，第二次关闭。</p></div>
+          <div><span>02</span><h3 data-zh="长按说话" data-en="Hold to talk">长按说话</h3><p data-zh="按住期间录音，松开结束。" data-en="Record while held, stop on release.">按住期间录音，松开结束。</p></div>
+          <div><span>03</span><h3 data-zh="交叉控制" data-en="Cross control">交叉控制</h3><p data-zh="电脑按键与遥控器可以互相开启和关闭。" data-en="The keyboard and remote can start or stop the same session.">电脑按键与遥控器可以互相开启和关闭。</p></div>
+        </div>
       </div>
     </section>
 
     <section class="guide-band" id="setup">
       <div class="section-inner">
         <p class="eyebrow" data-zh="首次设置" data-en="First-time setup">首次设置</p>
-        <h2 data-zh="每个权限都有截图向导" data-en="A visual guide for every permission">每个权限都有截图向导</h2>
-        <p class="section-copy" data-zh="权限未完成时，先看对应截图，再由“立即设置”直接打开 macOS 的准确位置。豆包输入设备也有独立向导，避免权限全绿却仍然没有声音。" data-en="When a permission is missing, review the matching screenshot and use Set Up Now to open the exact macOS pane. Doubao input selection has its own guide so a green permission list never hides a silent input.">权限未完成时，先看对应截图，再由“立即设置”直接打开 macOS 的准确位置。豆包输入设备也有独立向导，避免权限全绿却仍然没有声音。</p>
+        <h2 data-zh="每项权限都有对应截图。" data-en="A screenshot for every permission.">每项权限都有对应截图。</h2>
+        <p class="section-copy" data-zh="权限未完成时，APP 会显示处理入口，并直接打开准确的 macOS 设置位置。豆包输入设备也有独立向导。" data-en="When a permission is missing, the app provides a direct route to the correct macOS pane. Doubao input-device selection has its own guide too.">权限未完成时，APP 会显示处理入口，并直接打开准确的 macOS 设置位置。豆包输入设备也有独立向导。</p>
         <div class="guide-grid">
           <figure><img src="assets/guides/permission-microphone.png" alt="麦克风权限"><figcaption data-zh="麦克风" data-en="Microphone">麦克风</figcaption></figure>
           <figure><img src="assets/guides/permission-accessibility.png" alt="辅助功能权限"><figcaption data-zh="辅助功能" data-en="Accessibility">辅助功能</figcaption></figure>
@@ -86,40 +107,29 @@
       </div>
     </section>
 
-    <!-- 购买遥控器区块暂停开放；恢复销售时取消本段注释并启用 commerce.json 店铺。 -->
-    <!--
-    <section class="section-inner" id="remote">
-      <div class="section-heading-row">
-        <div><p class="eyebrow" data-zh="配套硬件" data-en="Companion hardware">配套硬件</p><h2 data-zh="购买 X6 遥控器" data-en="Buy the X6 remote">购买 X6 遥控器</h2></div>
-        <p data-zh="选择购买平台，用手机扫码或直接打开链接。" data-en="Choose a store, scan on your phone, or open the link directly.">选择购买平台，用手机扫码或直接打开链接。</p>
+    <section class="section-inner release-section" id="release">
+      <div class="release-copy">
+        <p class="eyebrow" data-zh="版本 1.1.0" data-en="Version 1.1.0">版本 1.1.0</p>
+        <h2 data-zh="新遥控器，新映射页，同一套语音工作流。" data-en="A new remote, a new mapping screen, the same voice workflow.">新遥控器，新映射页，同一套语音工作流。</h2>
+        <a class="primary-button inline-button" href="https://updates.vincentstudio.org/vremoter/" data-zh="查看更新日志与下载" data-en="View release notes and downloads">查看更新日志与下载</a>
       </div>
-      <div class="commerce-layout">
-        <img class="remote-photo" data-localized-hero src="assets/commerce/x6-vibe-coding-hero-v2.png" alt="X6 Vibe Coding 遥控器">
-        <div class="store-panel">
-          <div class="tabs store-tabs" role="tablist" aria-label="Stores"></div>
-          <div class="store-content" aria-live="polite"></div>
-        </div>
-      </div>
+      <ul class="release-list">
+        <li data-zh="新增 Chromecast Voice Remote 语音支持" data-en="Chromecast Voice Remote voice support">新增 Chromecast Voice Remote 语音支持</li>
+        <li data-zh="新增 X6 与 Chromecast 按键映射" data-en="Key mapping for X6 and Chromecast">新增 X6 与 Chromecast 按键映射</li>
+        <li data-zh="新增可配置的豆包语音触发键" data-en="Configurable Doubao voice trigger">新增可配置的豆包语音触发键</li>
+        <li data-zh="优化原始按键拦截，避免重复触发" data-en="Improved original-action interception">优化原始按键拦截，避免重复触发</li>
+      </ul>
     </section>
-    -->
 
     <section class="support-band" id="support">
       <div class="section-inner support-layout">
-        <div>
-          <p class="eyebrow" data-zh="支持开发" data-en="Support development">支持开发</p>
-          <h2 data-zh="制作不易，麻烦打个赏补偿一点我的 Token 费吧。谢主隆恩🙏🙏🙏～～～" data-en="vRemoter is free. If it saves you a little time, WeChat, Alipay, or PayPal can help keep the API balance alive.">制作不易，麻烦打个赏补偿一点我的 Token 费吧。谢主隆恩🙏🙏🙏～～～</h2>
-        </div>
+        <div><p class="eyebrow" data-zh="支持开发" data-en="Support development">支持开发</p><h2 data-zh="vRemoter 免费提供。觉得好用，欢迎请我喝杯咖啡。" data-en="vRemoter is free. If it helps, you can buy me a coffee.">vRemoter 免费提供。觉得好用，欢迎请我喝杯咖啡。</h2></div>
         <div class="donation-panel">
-          <div class="tabs donation-tabs" role="tablist">
-            <button class="active" data-donation="wechat">微信 / WeChat</button>
-            <button data-donation="alipay">支付宝 / Alipay</button>
-            <button data-donation="paypal">PayPal</button>
-          </div>
+          <div class="tabs donation-tabs" role="tablist"><button class="active" data-donation="wechat">微信 / WeChat</button><button data-donation="alipay">支付宝 / Alipay</button><button data-donation="paypal">PayPal</button></div>
           <img id="donation-code" src="assets/donate/wechat.JPG" alt="微信收款码">
         </div>
       </div>
     </section>
-
   </main>
 
   <footer>

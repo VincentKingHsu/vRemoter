@@ -176,6 +176,25 @@ private enum GuideAsset {
     }
 }
 
+private enum RemoteImageAsset {
+    static func image(for remote: SupportedRemoteID) -> NSImage? {
+        let name = remote == .chromecast
+            ? "chromecast-voice-remote"
+            : "x6-remote"
+        let candidates: [URL?] = [
+            Bundle.main.resourceURL?
+                .appendingPathComponent("RemoteImages", isDirectory: true)
+                .appendingPathComponent("\(name).png"),
+            URL(fileURLWithPath: FileManager.default.currentDirectoryPath)
+                .appendingPathComponent("Resources/RemoteImages/\(name).png")
+        ]
+        for candidate in candidates.compactMap({ $0 }) {
+            if let image = NSImage(contentsOf: candidate) { return image }
+        }
+        return nil
+    }
+}
+
 private enum ConsoleModal: Identifiable {
     case permission(PermissionKind)
     case donationPrompt
@@ -192,8 +211,30 @@ private enum ConsoleModal: Identifiable {
     }
 }
 
+private enum ConsolePage: String, CaseIterable, Identifiable {
+    case mixer
+    case mapping
+
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .mixer: L10n.text("音频", "Audio")
+        case .mapping: L10n.text("按键映射", "Key Mapping")
+        }
+    }
+
+    var symbol: String {
+        switch self {
+        case .mixer: "slider.horizontal.3"
+        case .mapping: "keyboard"
+        }
+    }
+}
+
 @MainActor
 private final class ConsoleViewModel: ObservableObject {
+    @Published var selectedPage: ConsolePage = .mixer
     @Published var status = "启动中"
     @Published var hidConnected = false
     @Published var bleConnected = false
@@ -209,6 +250,9 @@ private final class ConsoleViewModel: ObservableObject {
     @Published var accessibilityGranted = false
     @Published var inputMonitoringGranted = false
     @Published var bluetoothGranted = false
+    @Published var x6Connected = false
+    @Published var chromecastConnected = false
+    @Published var inputTriggerKey = AppStorage.inputTriggerKey
     @Published var activeModal: ConsoleModal?
     @Published var showX6MicHint = !UserDefaults.standard.bool(
         forKey: "vRemoter.hasCompletedX6MicTest"
@@ -220,10 +264,24 @@ private final class ConsoleViewModel: ObservableObject {
     var onRestartApp: (() -> Void)?
     var onMacInputEnabledChanged: ((Bool) -> Void)?
     var onRemoteInputEnabledChanged: ((Bool) -> Void)?
+    var onInputTriggerChanged: (() -> Void)?
+    var onRemoteMappingEnabledChanged: ((SupportedRemoteID, Bool) -> Void)?
 
     var doubaoUsesVRemote: Bool { doubaoInput.contains("vRemoteDr 2ch") }
     var macSolo: Bool { macInputEnabled && !remoteInputEnabled }
     var remoteSolo: Bool { remoteInputEnabled && !macInputEnabled }
+
+    func setInputTrigger(_ trigger: InputTriggerKey) {
+        guard inputTriggerKey != trigger else { return }
+        inputTriggerKey = trigger
+        AppStorage.inputTriggerKey = trigger
+        onInputTriggerChanged?()
+    }
+
+    func setRemoteMappingEnabled(_ enabled: Bool, remote: SupportedRemoteID) {
+        RemoteMappingStore.shared.setEnabled(enabled, for: remote)
+        onRemoteMappingEnabledChanged?(remote, enabled)
+    }
 
     func toggleMacMute() {
         let next = !macInputEnabled
@@ -374,6 +432,8 @@ final class DebugWindowController: NSWindowController, NSWindowDelegate {
     var onRestartApp: (() -> Void)?
     var onMacInputEnabledChanged: ((Bool) -> Void)?
     var onRemoteInputEnabledChanged: ((Bool) -> Void)?
+    var onInputTriggerChanged: (() -> Void)?
+    var onRemoteMappingEnabledChanged: ((SupportedRemoteID, Bool) -> Void)?
 
     private let model = ConsoleViewModel()
     private var permissionTimer: Timer?
@@ -398,6 +458,7 @@ final class DebugWindowController: NSWindowController, NSWindowDelegate {
             blue: 0.067,
             alpha: 1
         )
+        window.appearance = NSAppearance(named: .darkAqua)
         window.minSize = windowSize
         window.maxSize = windowSize
         super.init(window: window)
@@ -411,8 +472,15 @@ final class DebugWindowController: NSWindowController, NSWindowDelegate {
         model.onRemoteInputEnabledChanged = { [weak self] enabled in
             self?.onRemoteInputEnabledChanged?(enabled)
         }
+        model.onInputTriggerChanged = { [weak self] in
+            self?.onInputTriggerChanged?()
+        }
+        model.onRemoteMappingEnabledChanged = { [weak self] remote, enabled in
+            self?.onRemoteMappingEnabledChanged?(remote, enabled)
+        }
         window.contentView = NSHostingView(
             rootView: StudioMixerView(model: model)
+                .preferredColorScheme(.dark)
                 .frame(
                     width: windowSize.width,
                     height: windowSize.height
@@ -442,6 +510,8 @@ final class DebugWindowController: NSWindowController, NSWindowDelegate {
         doubaoIsRecording: Bool,
         doubaoInput: String,
         driverAvailable: Bool,
+        x6Connected: Bool,
+        chromecastConnected: Bool,
         macLevelDB: Double? = nil,
         remoteLevelDB: Double? = nil
     ) {
@@ -456,6 +526,8 @@ final class DebugWindowController: NSWindowController, NSWindowDelegate {
             self.model.doubaoIsRecording = doubaoIsRecording
             self.model.doubaoInput = doubaoInput
             self.model.driverAvailable = driverAvailable
+            self.model.x6Connected = x6Connected
+            self.model.chromecastConnected = chromecastConnected
             if let macLevelDB { self.model.macLevelDB = macLevelDB }
             if let remoteLevelDB { self.model.remoteLevelDB = remoteLevelDB }
             self.model.refreshPermissions()
@@ -504,12 +576,18 @@ private struct StudioMixerView: View {
         VStack(spacing: 0) {
             header
                 .frame(height: 68)
-            Spacer().frame(height: 15)
-            mixer
-                .frame(height: 288)
-            Spacer().frame(height: 17)
-            statusPanel
-                .frame(height: 230)
+            if model.selectedPage == .mixer {
+                Spacer().frame(height: 15)
+                mixer
+                    .frame(height: 288)
+                Spacer().frame(height: 17)
+                statusPanel
+                    .frame(height: 230)
+            } else {
+                Spacer().frame(height: 15)
+                KeyMappingView(model: model)
+                    .frame(height: 535)
+            }
         }
         .padding(20)
         .frame(width: 775, height: 658)
@@ -556,6 +634,8 @@ private struct StudioMixerView: View {
                     .font(.system(size: 11, weight: .medium))
                     .foregroundStyle(ConsoleTheme.secondary)
             }
+            ConsolePageSelector(selection: $model.selectedPage)
+                .frame(width: 202)
             Spacer()
             HStack(spacing: 7) {
                 Circle()
@@ -725,6 +805,534 @@ private struct StudioMixerView: View {
             return L10n.text("正在连接语音服务", "Connecting voice service")
         }
         return L10n.text("HID 与 BLE 未连接", "HID and BLE disconnected")
+    }
+}
+
+private struct ConsolePageSelector: View {
+    @Binding var selection: ConsolePage
+
+    var body: some View {
+        HStack(spacing: 3) {
+            ForEach(ConsolePage.allCases) { page in
+                Button {
+                    selection = page
+                } label: {
+                    HStack(spacing: 5) {
+                        Image(systemName: page.symbol)
+                        Text(page.title)
+                    }
+                    .font(.system(size: 11.5, weight: .semibold))
+                    .foregroundStyle(
+                        selection == page
+                            ? ConsoleTheme.text
+                            : ConsoleTheme.secondary
+                    )
+                    .frame(maxWidth: .infinity, minHeight: 30)
+                    .background(
+                        selection == page
+                            ? ConsoleTheme.surface2
+                            : Color.clear
+                    )
+                    .clipShape(RoundedRectangle(cornerRadius: 8))
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel(page.title)
+            }
+        }
+        .padding(3)
+        .background(ConsoleTheme.black.opacity(0.72))
+        .clipShape(RoundedRectangle(cornerRadius: 11))
+    }
+}
+
+private struct KeyMappingView: View {
+    @ObservedObject var model: ConsoleViewModel
+    @ObservedObject private var mappings = RemoteMappingStore.shared
+    @State private var selectedDevice: SupportedRemoteID = .chromecast
+
+    var body: some View {
+        VStack(spacing: 14) {
+            triggerPanel
+                .frame(height: 116)
+            HStack(spacing: 14) {
+                devicePanel
+                    .frame(width: 238)
+                mappingPanel
+            }
+        }
+    }
+
+    private var triggerPanel: some View {
+        HStack(spacing: 18) {
+            VStack(alignment: .leading, spacing: 7) {
+                HStack(spacing: 7) {
+                    Image(systemName: "waveform.badge.mic")
+                        .foregroundStyle(ConsoleTheme.green)
+                    Text(L10n.text("豆包语音触发键", "Doubao voice trigger"))
+                        .font(.system(size: 17, weight: .semibold))
+                        .foregroundStyle(ConsoleTheme.text)
+                }
+                Text(L10n.text(
+                    "遥控器语音键与电脑键盘都使用这个按键控制豆包。这里必须与豆包输入法中的语音快捷键保持一致。",
+                    "The remote voice key and Mac keyboard both use this trigger. It must match Doubao Input Method's voice shortcut."
+                ))
+                    .font(.system(size: 12.5))
+                    .foregroundStyle(ConsoleTheme.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            Spacer(minLength: 10)
+            VStack(alignment: .trailing, spacing: 7) {
+                Picker(
+                    L10n.text("触发键", "Trigger"),
+                    selection: Binding(
+                        get: { model.inputTriggerKey },
+                        set: model.setInputTrigger
+                    )
+                ) {
+                    ForEach(InputTriggerKey.allCases) { trigger in
+                        Text(trigger.title).tag(trigger)
+                    }
+                }
+                .labelsHidden()
+                .frame(width: 158)
+                .disabled(model.remoteStreaming)
+                if model.inputTriggerKey == .function {
+                    Label(
+                        L10n.text("Fn 需在本机测试", "Test Fn on this Mac"),
+                        systemImage: "exclamationmark.triangle.fill"
+                    )
+                    .font(.system(size: 10.5, weight: .medium))
+                    .foregroundStyle(ConsoleTheme.amber)
+                } else if model.remoteStreaming {
+                    Text(L10n.text("录音结束后可修改", "Stop recording to change"))
+                        .font(.system(size: 10.5))
+                        .foregroundStyle(ConsoleTheme.tertiary)
+                }
+            }
+        }
+        .padding(.horizontal, 19)
+        .background(panelBackground(ConsoleTheme.surface, radius: 17))
+    }
+
+    private var devicePanel: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text(L10n.text("支持的设备", "Supported devices"))
+                .font(.system(size: 12, weight: .semibold))
+                .foregroundStyle(ConsoleTheme.secondary)
+
+            DeviceSelectionRow(
+                title: SupportedRemoteID.chromecast.title,
+                signature: SupportedRemoteID.chromecast.signature,
+                connected: model.chromecastConnected,
+                selected: selectedDevice == .chromecast
+            ) { selectedDevice = .chromecast }
+
+            DeviceSelectionRow(
+                title: SupportedRemoteID.x6.title,
+                signature: SupportedRemoteID.x6.signature,
+                connected: model.x6Connected,
+                selected: selectedDevice == .x6
+            ) { selectedDevice = .x6 }
+
+            Spacer()
+            Label(
+                L10n.text(
+                    "设置跟随型号，不绑定某一只遥控器",
+                    "Settings follow the model, not one unit"
+                ),
+                systemImage: "checkmark.shield.fill"
+            )
+            .font(.system(size: 10.5, weight: .medium))
+            .foregroundStyle(ConsoleTheme.green)
+            .fixedSize(horizontal: false, vertical: true)
+        }
+        .padding(15)
+        .background(panelBackground(ConsoleTheme.surface, radius: 17))
+    }
+
+    private var mappingPanel: some View {
+        HStack(spacing: 14) {
+            VStack(spacing: 10) {
+                RemoteProductImage(kind: selectedDevice)
+                    .frame(width: 128)
+                Text(selectedDevice == .chromecast
+                    ? L10n.text("14 个可映射键", "14 mappable buttons")
+                    : L10n.text("15 个正面可映射键", "15 mappable front buttons"))
+                    .font(.system(size: 10.5, weight: .medium))
+                    .foregroundStyle(ConsoleTheme.secondary)
+                    .multilineTextAlignment(.center)
+                if selectedDevice == .x6 {
+                    Text(L10n.text(
+                        "鼠标模式键由设备内部处理",
+                        "Mouse Mode is handled by the device"
+                    ))
+                        .font(.system(size: 9.5))
+                        .foregroundStyle(ConsoleTheme.tertiary)
+                        .multilineTextAlignment(.center)
+                }
+                Spacer()
+            }
+            .frame(width: 130)
+            Divider().overlay(ConsoleTheme.lineSoft)
+            VStack(alignment: .leading, spacing: 8) {
+                HStack {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(selectedDevice.title)
+                            .font(.system(size: 16, weight: .semibold))
+                            .foregroundStyle(ConsoleTheme.text)
+                        Text(L10n.text("点击右侧菜单修改按键", "Use each menu to assign a key"))
+                            .font(.system(size: 10.5))
+                            .foregroundStyle(ConsoleTheme.tertiary)
+                    }
+                    Spacer()
+                    Toggle(
+                        L10n.text("启用映射", "Enable"),
+                        isOn: Binding(
+                            get: { mappings.isEnabled(selectedDevice) },
+                            set: { model.setRemoteMappingEnabled($0, remote: selectedDevice) }
+                        )
+                    )
+                    .toggleStyle(.switch)
+                    .controlSize(.small)
+                }
+                Divider().overlay(ConsoleTheme.lineSoft)
+                ScrollView {
+                    LazyVStack(spacing: 6) {
+                        ForEach(RemoteProfiles.buttons(for: selectedDevice)) { button in
+                            MappingRow(
+                                remote: selectedDevice,
+                                button: button,
+                                enabled: mappings.isEnabled(selectedDevice)
+                            )
+                        }
+                    }
+                }
+                HStack {
+                    if !mappings.isEnabled(selectedDevice) {
+                        Label(
+                            L10n.text("未启用时保持系统原行为", "System behavior is unchanged"),
+                            systemImage: "info.circle"
+                        )
+                        .font(.system(size: 10.5))
+                        .foregroundStyle(ConsoleTheme.secondary)
+                    }
+                    Spacer()
+                    Button(L10n.text("恢复默认", "Reset")) {
+                        mappings.reset(selectedDevice)
+                    }
+                    .buttonStyle(.plain)
+                    .font(.system(size: 11.5, weight: .semibold))
+                    .foregroundStyle(ConsoleTheme.green)
+                }
+            }
+            .frame(maxWidth: .infinity)
+        }
+        .padding(15)
+        .background(panelBackground(ConsoleTheme.surface, radius: 17))
+    }
+}
+
+private struct DeviceSelectionRow: View {
+    let title: String
+    let signature: String
+    let connected: Bool
+    let selected: Bool
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            VStack(alignment: .leading, spacing: 7) {
+                HStack(spacing: 6) {
+                    Circle()
+                        .fill(connected ? ConsoleTheme.green : ConsoleTheme.tertiary)
+                        .frame(width: 8, height: 8)
+                    Text(title)
+                        .font(.system(size: 12.5, weight: .semibold))
+                        .foregroundStyle(ConsoleTheme.text)
+                        .lineLimit(1)
+                }
+                HStack {
+                    Text(signature)
+                        .font(.system(size: 10.5, design: .monospaced))
+                        .foregroundStyle(ConsoleTheme.tertiary)
+                    Spacer()
+                    Text(connected
+                        ? L10n.text("已连接", "Connected")
+                        : L10n.text("未连接", "Offline"))
+                        .font(.system(size: 10.5, weight: .medium))
+                        .foregroundStyle(connected ? ConsoleTheme.green : ConsoleTheme.tertiary)
+                }
+            }
+            .padding(11)
+            .background(selected ? ConsoleTheme.surface2 : ConsoleTheme.black.opacity(0.35))
+            .overlay(
+                RoundedRectangle(cornerRadius: 11)
+                    .stroke(selected ? ConsoleTheme.green.opacity(0.8) : ConsoleTheme.lineSoft, lineWidth: 1)
+            )
+            .clipShape(RoundedRectangle(cornerRadius: 11))
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("\(title), \(connected ? "connected" : "offline")")
+    }
+}
+
+private struct MappingRow: View {
+    @ObservedObject private var mappings = RemoteMappingStore.shared
+    @State private var showRecorder = false
+    let remote: SupportedRemoteID
+    let button: RemoteButtonDefinition
+    let enabled: Bool
+
+    var body: some View {
+        HStack(spacing: 8) {
+            Image(systemName: button.symbol)
+                .frame(width: 18)
+                .foregroundStyle(button.voiceControlled ? ConsoleTheme.green : ConsoleTheme.secondary)
+            Text(button.title)
+                .font(.system(size: 11.5, weight: .medium))
+                .foregroundStyle(ConsoleTheme.text)
+                .frame(width: 76, alignment: .leading)
+            Spacer(minLength: 4)
+            if !button.remappable {
+                Text(L10n.text("设备内部功能", "Device-only function"))
+                    .font(.system(size: 11))
+                    .foregroundStyle(ConsoleTheme.tertiary)
+            } else if button.voiceControlled {
+                Text(RemoteMappingTarget.doubaoVoice.title)
+                    .font(.system(size: 11))
+                    .foregroundStyle(ConsoleTheme.green)
+            } else {
+                HStack(spacing: 4) {
+                    Picker(
+                        button.title,
+                        selection: Binding(
+                            get: { mappings.target(for: button, remote: remote) },
+                            set: { target in
+                                if target == .custom {
+                                    showRecorder = true
+                                } else {
+                                    mappings.setTarget(target, for: button, remote: remote)
+                                }
+                            }
+                        )
+                    ) {
+                        ForEach(RemoteMappingTarget.allCases.filter { $0 != .doubaoVoice }) { target in
+                            Text(
+                                target == .custom
+                                    ? mappings.targetTitle(for: button, remote: remote)
+                                    : target.title
+                            ).tag(target)
+                        }
+                    }
+                    .labelsHidden()
+                    .frame(width: 142)
+                    if mappings.target(for: button, remote: remote) == .custom {
+                        Button { showRecorder = true } label: {
+                            Image(systemName: "record.circle")
+                        }
+                        .buttonStyle(.plain)
+                        .foregroundStyle(ConsoleTheme.green)
+                        .help(L10n.text("重新录制按键", "Record again"))
+                    }
+                }
+            }
+        }
+        .frame(height: 28)
+        .padding(.horizontal, 9)
+        .background(ConsoleTheme.surface2)
+        .clipShape(RoundedRectangle(cornerRadius: 8))
+        .accessibilityElement(children: .combine)
+        .sheet(isPresented: $showRecorder) {
+            KeyboardShortcutCaptureView(
+                buttonTitle: button.title,
+                onCancel: { showRecorder = false },
+                onSave: { shortcut in
+                    mappings.setCustomShortcut(
+                        shortcut,
+                        for: button,
+                        remote: remote
+                    )
+                    showRecorder = false
+                }
+            )
+        }
+    }
+}
+
+private struct KeyboardShortcutCaptureView: View {
+    let buttonTitle: String
+    let onCancel: () -> Void
+    let onSave: (RemoteCustomShortcut) -> Void
+    @State private var captured: RemoteCustomShortcut?
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 18) {
+            VStack(alignment: .leading, spacing: 5) {
+                Text(L10n.text("录制键盘按键", "Record Keyboard Key"))
+                    .font(.system(size: 20, weight: .semibold))
+                Text(L10n.text(
+                    "为“\(buttonTitle)”按下一个按键或组合键。",
+                    "Press a key or shortcut for “\(buttonTitle)”."
+                ))
+                    .font(.system(size: 13))
+                    .foregroundStyle(ConsoleTheme.secondary)
+            }
+
+            KeyboardEventCaptureView { shortcut in
+                captured = shortcut
+            }
+            .frame(height: 82)
+            .overlay(
+                RoundedRectangle(cornerRadius: 13)
+                    .stroke(
+                        captured == nil ? ConsoleTheme.line : ConsoleTheme.green,
+                        lineWidth: 1.5
+                    )
+            )
+            .overlay {
+                VStack(spacing: 5) {
+                    Text(captured?.label ?? L10n.text("现在按下键盘按键", "Press a key now"))
+                        .font(.system(size: 18, weight: .semibold, design: .rounded))
+                        .foregroundStyle(captured == nil ? ConsoleTheme.secondary : ConsoleTheme.text)
+                    Text(L10n.text("支持 Command / Option / Control / Shift 组合", "Command / Option / Control / Shift are supported"))
+                        .font(.system(size: 10.5))
+                        .foregroundStyle(ConsoleTheme.tertiary)
+                }
+                .allowsHitTesting(false)
+            }
+
+            HStack {
+                Button(L10n.text("取消", "Cancel"), action: onCancel)
+                Spacer()
+                Button(L10n.text("保存映射", "Save Mapping")) {
+                    if let captured { onSave(captured) }
+                }
+                .keyboardShortcut(.defaultAction)
+                .disabled(captured == nil)
+            }
+        }
+        .padding(24)
+        .frame(width: 430, height: 245)
+        .background(ConsoleTheme.panel)
+        .foregroundStyle(ConsoleTheme.text)
+    }
+}
+
+private struct KeyboardEventCaptureView: NSViewRepresentable {
+    let onCapture: (RemoteCustomShortcut) -> Void
+
+    func makeNSView(context: Context) -> KeyboardCaptureNSView {
+        let view = KeyboardCaptureNSView()
+        view.onCapture = onCapture
+        DispatchQueue.main.async {
+            view.window?.makeFirstResponder(view)
+        }
+        return view
+    }
+
+    func updateNSView(_ nsView: KeyboardCaptureNSView, context: Context) {
+        nsView.onCapture = onCapture
+        DispatchQueue.main.async {
+            nsView.window?.makeFirstResponder(nsView)
+        }
+    }
+}
+
+private final class KeyboardCaptureNSView: NSView {
+    var onCapture: ((RemoteCustomShortcut) -> Void)?
+
+    override var acceptsFirstResponder: Bool { true }
+
+    override func viewDidMoveToWindow() {
+        super.viewDidMoveToWindow()
+        DispatchQueue.main.async { [weak self] in
+            guard let self else { return }
+            self.window?.makeFirstResponder(self)
+        }
+    }
+
+    override func keyDown(with event: NSEvent) {
+        guard !event.isARepeat else { return }
+        onCapture?(Self.shortcut(from: event))
+    }
+
+    private static func shortcut(from event: NSEvent) -> RemoteCustomShortcut {
+        let modifiers = event.modifierFlags.intersection(.deviceIndependentFlagsMask)
+        var flags: CGEventFlags = []
+        var prefix = ""
+        if modifiers.contains(.control) {
+            flags.insert(.maskControl)
+            prefix += "⌃"
+        }
+        if modifiers.contains(.option) {
+            flags.insert(.maskAlternate)
+            prefix += "⌥"
+        }
+        if modifiers.contains(.shift) {
+            flags.insert(.maskShift)
+            prefix += "⇧"
+        }
+        if modifiers.contains(.command) {
+            flags.insert(.maskCommand)
+            prefix += "⌘"
+        }
+
+        let special: [UInt16: String] = [
+            0x24: "Return", 0x30: "Tab", 0x31: "Space", 0x33: "Delete",
+            0x35: "Esc", 0x73: "Home", 0x77: "End", 0x74: "Page Up",
+            0x79: "Page Down", 0x7B: "←", 0x7C: "→", 0x7D: "↓", 0x7E: "↑",
+            0x7A: "F1", 0x78: "F2", 0x63: "F3", 0x76: "F4",
+            0x60: "F5", 0x61: "F6", 0x62: "F7", 0x64: "F8",
+            0x65: "F9", 0x6D: "F10", 0x67: "F11", 0x6F: "F12",
+        ]
+        let key = special[event.keyCode]
+            ?? event.charactersIgnoringModifiers?.uppercased()
+            ?? String(format: "Key 0x%02X", event.keyCode)
+        return RemoteCustomShortcut(
+            keyCode: event.keyCode,
+            flags: flags.rawValue,
+            label: prefix + key
+        )
+    }
+}
+
+private struct RemoteProductImage: View {
+    let kind: SupportedRemoteID
+
+    var body: some View {
+        Group {
+            if let image = RemoteImageAsset.image(for: kind) {
+                if kind == .chromecast {
+                    // The linked Google asset includes wide callout labels.
+                    // Crop only its transparent side callouts so the official
+                    // remote drawing remains legible at inspector size.
+                    Image(nsImage: image)
+                        .resizable()
+                        .interpolation(.high)
+                        .aspectRatio(contentMode: .fill)
+                        .frame(width: 84, height: 260)
+                        .clipped()
+                } else {
+                    Image(nsImage: image)
+                        .resizable()
+                        .interpolation(.high)
+                        .aspectRatio(contentMode: .fit)
+                        .frame(width: 92, height: 260)
+                }
+            } else {
+                Label(
+                    L10n.text("遥控器图片缺失", "Remote image unavailable"),
+                    systemImage: "photo.badge.exclamationmark"
+                )
+                .font(.system(size: 10.5, weight: .medium))
+                .foregroundStyle(ConsoleTheme.secondary)
+                .multilineTextAlignment(.center)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            }
+        }
+        .frame(height: 260)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(kind.title)
     }
 }
 

@@ -20,56 +20,6 @@ import CoreGraphics
 import Darwin
 import Foundation
 
-// MARK: - Virtual key codes
-
-enum VK {
-    static let option: CGKeyCode = 0x3A
-    static let rightOption: CGKeyCode = 0x3D
-}
-
-// MARK: - Key synthesizer
-
-enum Key {
-    /// Lets the event tap distinguish Bridge-generated Option events from
-    /// physical keyboards, other Bluetooth buttons, and external remappers.
-    static let syntheticMarker: Int64 = 0x4D_49_52_42 // "MIRB"
-
-    /// Walkie-talkie style: Option key down only (no matching up). Pair with `optionUp`.
-    static func optionDown() {
-        let src = CGEventSource(stateID: .hidSystemState)
-        if let e = CGEvent(keyboardEventSource: src, virtualKey: VK.option, keyDown: true) {
-            e.setIntegerValueField(
-                .eventSourceUserData,
-                value: syntheticMarker
-            )
-            e.post(tap: .cghidEventTap)
-            print("[KEY] synthetic Option DOWN")
-        }
-    }
-    static func optionUp() {
-        let src = CGEventSource(stateID: .hidSystemState)
-        if let e = CGEvent(keyboardEventSource: src, virtualKey: VK.option, keyDown: false) {
-            e.setIntegerValueField(
-                .eventSourceUserData,
-                value: syntheticMarker
-            )
-            e.post(tap: .cghidEventTap)
-            print("[KEY] synthetic Option UP")
-        }
-    }
-    /// A deliberate short Option click for Doubao's toggle mode.
-    ///
-    /// Posting down and up back-to-back is sometimes too fast for an input
-    /// method to classify as a real click, so keep the modifier down briefly.
-    static func optionTap(completion: (() -> Void)? = nil) {
-        optionDown()
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.06) {
-            optionUp()
-            completion?()
-        }
-    }
-}
-
 // MARK: - Menu bar UI
 
 final class AppController: NSObject, NSApplicationDelegate, NSMenuDelegate {
@@ -216,11 +166,11 @@ final class AppController: NSObject, NSApplicationDelegate, NSMenuDelegate {
         x6.onNativeSearchEdge = { [weak self] in
             self?.x6SearchSuppressor.arm()
         }
-        x6SearchSuppressor.onOptionDownObserved = { [weak self] synthetic in
-            self?.x6Session.optionDownObserved(isSynthetic: synthetic)
+        x6SearchSuppressor.onTriggerDownObserved = { [weak self] synthetic in
+            self?.x6Session.triggerDownObserved(isSynthetic: synthetic)
         }
-        x6SearchSuppressor.onOptionUpObserved = { [weak self] synthetic in
-            self?.x6Session.optionUpObserved(isSynthetic: synthetic)
+        x6SearchSuppressor.onTriggerUpObserved = { [weak self] synthetic in
+            self?.x6Session.triggerUpObserved(isSynthetic: synthetic)
         }
         x6BLE.onConnectionChanged = { [weak self] connected in
             self?.x6BLEConnected = connected
@@ -533,6 +483,8 @@ final class AppController: NSObject, NSApplicationDelegate, NSMenuDelegate {
             doubaoIsRecording: doubaoSnapshot.isRecording,
             doubaoInput: doubaoSnapshot.deviceSummary,
             driverAvailable: AudioPipe.shared.isOutputDeviceAvailable,
+            x6Connected: x6HIDConnected || x6BLEConnected,
+            chromecastConnected: chromecastHIDConnected || chromecastBLEConnected,
             macLevelDB: nil,
             remoteLevelDB: nil
         )
@@ -567,6 +519,17 @@ final class AppController: NSObject, NSApplicationDelegate, NSMenuDelegate {
                 self?.openPreferredRemoteMicrophone()
             }
             self?.updateStatus()
+        }
+        debugWindow.onInputTriggerChanged = { [weak self] in
+            self?.x6SearchSuppressor.triggerConfigurationDidChange()
+        }
+        debugWindow.onRemoteMappingEnabledChanged = { [weak self] remote, enabled in
+            switch remote {
+            case .x6:
+                self?.x6.setRemappingEnabled(enabled)
+            case .chromecast:
+                self?.chromecastHID.setRemappingEnabled(enabled)
+            }
         }
     }
 

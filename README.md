@@ -2,7 +2,7 @@
 
 > 本仓库保存 vRemoter 的源码、设计源稿、构建脚本与测试。普通用户请通过 `vincentstudio.org` 系列域名访问官网、下载与更新服务。
 
-[官方网站](https://vremoter.vincentstudio.org/) · [下载最新版](https://updates.vincentstudio.org/vremoter/) · [v1.0.1 Release](https://github.com/VincentKingHsu/vRemoter/releases/tag/v1.0.1)
+[官方网站](https://vremoter.vincentstudio.org/) · [下载最新版](https://updates.vincentstudio.org/vremoter/) · [v1.1.0 Release](https://github.com/VincentKingHsu/vRemoter/releases/tag/v1.1.0)
 
 ## 产品定位
 
@@ -13,9 +13,26 @@ vRemoter 把蓝牙语音遥控器变成 macOS 上的 Vibe Coding 控制器：遥
 - X6-Remote（VID `0x1D5A` / PID `0xC081`）
 - Google Chromecast Remote（VID `0x18D1` / PID `0x9450`）
 
-Chromecast Remote 当前已实现语音键双模式：短按第一次打开、第二次关闭；长按时持续录音，松手自动关闭。YouTube、Netflix 与信源键暂未重映射。
+Chromecast Remote 已实现语音键双模式：短按第一次打开、第二次关闭；长按时持续录音，松手自动关闭。APP 还提供按型号保存的按键映射，可把方向、确认、返回、Home、YouTube、Netflix、信源、音量等按键改为常用 macOS 操作。
 
-当前版本：`1.0.1`
+当前版本：`1.1.0`
+
+## 1.1.0 新功能
+
+- 新增 Chromecast Voice Remote（VID `0x18D1` / PID `0x9450`）语音与按键支持。
+- 新增 X6 Remote 与 Chromecast Voice Remote 按键映射页面。
+- 豆包语音触发键可选择 Option、Command、Control、Shift 或 Fn，默认 Option；所选按键必须与豆包输入法设置一致。
+- 映射设置跟随型号，不绑定某一只遥控器；更换同型号设备后继续沿用。
+- 启用映射后拦截设备原始动作，再由 vRemoter 发送所选键盘、媒体键或自定义快捷键；关闭映射即可恢复系统原行为。
+- 主控制台去掉 X6 专属措辞，X6 与 Chromecast Remote 可以同时连接。
+
+![vRemoter 1.1.0 音频控制台](docs/assets/screenshots/vremoter-audio-1.1.0.png)
+
+![vRemoter 1.1.0 Chromecast 按键映射](docs/assets/screenshots/vremoter-mapping-chromecast-1.1.0.png)
+
+完整历史见 [CHANGELOG.md](CHANGELOG.md)。
+
+当前支持边界：Chromecast 仅确认上述 VID/PID；X6 鼠标模式切换键由设备固件内部处理，不能单独重映射。语音键保留给豆包语音控制。Fn 的实际行为取决于 Mac 与豆包配置，建议首次使用时现场测试。
 
 ## 支持开发
 
@@ -65,7 +82,7 @@ vRemoter 免费提供。如果它帮你省下了一点时间，欢迎请我喝�
 - `PKG`：首次安装或驱动发生变化时使用，包含 APP 与音频驱动。
 - `DMG`：仅更新 APP，适合已经安装过驱动且本次驱动未变化的用户。
 
-1.0.1 是首次 APP-only 更新：PKG 供首次安装，DMG 供已经安装过驱动的用户覆盖更新。当前发布包尚未完成 Developer ID 签名与公证，下载页必须明确标注这一状态；正式广泛分发前仍须完成签名、公证与真实机器安装验证。
+1.1.0 的驱动没有变化：PKG 供首次安装，DMG 供已经安装过驱动的用户覆盖更新。当前发布包尚未完成 Developer ID 签名与公证，下载页必须明确标注这一状态；正式广泛分发前仍须完成签名、公证与真实机器安装验证。
 
 ## 更新策略
 

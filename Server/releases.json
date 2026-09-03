@@ -1,5 +1,32 @@
 [
   {
+    "id": 1001100,
+    "tag_name": "v1.1.0",
+    "name": "vRemoter 1.1.0",
+    "body": "- 新增 Chromecast Voice Remote 支持\n- 新增 X6 与 Chromecast 按键映射\n- 豆包语音触发键可选择 Option、Command、Control、Shift 或 Fn\n- 优化映射启用时的原始按键拦截",
+    "html_url": "https://updates.vincentstudio.org/vremoter/",
+    "published_at": "2026-09-03T00:00:00+08:00",
+    "draft": false,
+    "prerelease": false,
+    "driver_update_required": false,
+    "assets": [
+      {
+        "id": 1001101,
+        "name": "vRemoter-1.1.0.pkg",
+        "browser_download_url": "https://updates.vincentstudio.org/vremoter/vRemoter-1.1.0.pkg",
+        "digest": "sha256:037779e4255bdad6108c08e9bbc34fae45cef3de8d243b48817c41e70b1a8b67",
+        "size": 8001101
+      },
+      {
+        "id": 1001102,
+        "name": "vRemoter-1.1.0.dmg",
+        "browser_download_url": "https://updates.vincentstudio.org/vremoter/vRemoter-1.1.0.dmg",
+        "digest": "sha256:b5df4b6f50e2f8f7b47549f538d8239368853f57003de1f3ec21b6e887287e8f",
+        "size": 8242488
+      }
+    ]
+  },
+  {
     "id": 1000100,
     "tag_name": "v1.0.1",
     "name": "vRemoter 1.0.1",

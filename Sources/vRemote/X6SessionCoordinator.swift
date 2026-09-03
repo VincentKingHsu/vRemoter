@@ -128,7 +128,7 @@ final class X6SessionCoordinator {
         recognitionExpectedOpen = true
         optionRequestedOpen = true
         closeOptionSent = false
-        Key.optionTap()
+        Key.triggerTap()
         publish("遥控器已启动 · 正在打开豆包")
         scheduleStartVerification()
         reconcileSoon(after: 0.03)
@@ -201,7 +201,7 @@ final class X6SessionCoordinator {
 
     /// Called before a real keyboard Option DOWN reaches Doubao. This method
     /// follows the physical key by changing microphone transport only.
-    func optionDownObserved(isSynthetic: Bool) {
+    func triggerDownObserved(isSynthetic: Bool) {
         guard !isSynthetic else { return }
         let snapshot = doubaoState.snapshotNow()
         let wasOpen = recognitionExpectedOpen || snapshot.isRecording
@@ -233,7 +233,7 @@ final class X6SessionCoordinator {
         }
     }
 
-    func optionUpObserved(isSynthetic: Bool) {
+    func triggerUpObserved(isSynthetic: Bool) {
         guard !isSynthetic else { return }
         print("[OPTION] UP source=keyboard owner=\(owner.rawValue)")
         reconcileSoon(after: 0.03)
@@ -328,7 +328,7 @@ final class X6SessionCoordinator {
         recognitionExpectedOpen = false
         optionRequestedOpen = false
         owner = .none
-        Key.optionTap()
+        Key.triggerTap()
         scheduleRouteClose(after: 0.10)
         publish("遥控器已结束 · 正在关闭豆包")
         print("[X6-SESSION] \(reason) → one Option TAP OFF")
