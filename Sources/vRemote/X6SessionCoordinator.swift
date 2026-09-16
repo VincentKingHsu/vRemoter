@@ -477,6 +477,15 @@ final class X6SessionCoordinator {
             publish("豆包已就绪")
 
         case .unavailable:
+            // 该状态表示“观测不到豆包的录音状态”，而不是“豆包没有在录音”。
+            // 在 macOS 14.2 之前，CoreAudio 不提供
+            // kAudioProcessPropertyIsRunningInput，因此这里会长期为
+            // unavailable。此时若按“未录音”处理，会在用户刚开始说话时
+            // 就把会话关掉，故保持已打开的会话，交给用户手势关闭。
+            if phase == .open {
+                publish("豆包录音中 · 无法校验")
+                break
+            }
             if phase != .opening {
                 finalizeClosed(reason: "Doubao unavailable")
             }
@@ -743,6 +752,17 @@ final class X6SessionCoordinator {
             let snapshot = self.doubaoState.snapshotNow()
             if snapshot.isRecording {
                 self.handleDoubaoSnapshot(snapshot)
+                return
+            }
+            // 同上：状态不可观测时不能判定为“豆包未启动”，否则遥控器
+            // 会在 1 秒后被自动关闭。
+            if snapshot.state == .unavailable {
+                self.phase = .open
+                self.publish("豆包录音中 · 无法校验")
+                print(
+                    "[VOICE-SESSION] start verification skipped: " +
+                    "Doubao state unavailable"
+                )
                 return
             }
             self.finalizeClosed(reason: "opening timeout")
