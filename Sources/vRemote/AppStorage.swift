@@ -6,6 +6,8 @@ enum AppStorage {
     static let macInputEnabledKey = "macInputEnabled"
     static let remoteInputEnabledKey = "remoteInputEnabled"
     static let inputTriggerKeyKey = "inputTriggerKey"
+    static let voiceInputHostKey = "voiceInputHost"
+    static let voiceTriggerStyleKey = "voiceTriggerStyle"
 
     static let logsDirectory: URL = {
         FileManager.default.homeDirectoryForCurrentUser
@@ -34,6 +36,8 @@ enum AppStorage {
             macInputEnabledKey: true,
             remoteInputEnabledKey: true,
             inputTriggerKeyKey: InputTriggerKey.option.rawValue,
+            voiceInputHostKey: VoiceInputHost.automatic.rawValue,
+            voiceTriggerStyleKey: VoiceTriggerStyle.tapToggle.rawValue,
         ])
         ensureDirectory(logsDirectory)
         ensureDirectory(applicationSupportDirectory)
@@ -69,6 +73,26 @@ enum AppStorage {
         }
         set {
             UserDefaults.standard.set(newValue.rawValue, forKey: inputTriggerKeyKey)
+        }
+    }
+
+    static var voiceInputHost: VoiceInputHost {
+        get {
+            let raw = UserDefaults.standard.string(forKey: voiceInputHostKey)
+            return VoiceInputHost(rawValue: raw ?? "") ?? .automatic
+        }
+        set {
+            UserDefaults.standard.set(newValue.rawValue, forKey: voiceInputHostKey)
+        }
+    }
+
+    static var voiceTriggerStyle: VoiceTriggerStyle {
+        get {
+            let raw = UserDefaults.standard.string(forKey: voiceTriggerStyleKey)
+            return VoiceTriggerStyle(rawValue: raw ?? "") ?? .tapToggle
+        }
+        set {
+            UserDefaults.standard.set(newValue.rawValue, forKey: voiceTriggerStyleKey)
         }
     }
 
