@@ -8,6 +8,7 @@ enum AppStorage {
     static let inputTriggerKeyKey = "inputTriggerKey"
     static let voiceInputHostKey = "voiceInputHost"
     static let voiceTriggerStyleKey = "voiceTriggerStyle"
+    static let voiceCompatibilityKey = "voiceCompatibility"
 
     static let logsDirectory: URL = {
         FileManager.default.homeDirectoryForCurrentUser
@@ -94,6 +95,13 @@ enum AppStorage {
         set {
             UserDefaults.standard.set(newValue.rawValue, forKey: voiceTriggerStyleKey)
         }
+    }
+
+    /// Explicit compatibility-mode override. Unset means "decide at runtime
+    /// by probing whether the per-process capture API works".
+    static var voiceCompatibility: Bool {
+        get { UserDefaults.standard.bool(forKey: voiceCompatibilityKey) }
+        set { UserDefaults.standard.set(newValue, forKey: voiceCompatibilityKey) }
     }
 
     static func ensureDirectory(_ url: URL) {

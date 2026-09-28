@@ -47,7 +47,8 @@ final class AppController: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private let x6SearchSuppressor = X6SearchSuppressor()
     private let doubaoAudioState = DoubaoAudioStateMonitor()
     private lazy var x6Session = X6SessionCoordinator(
-        doubaoState: doubaoAudioState
+        doubaoState: doubaoAudioState,
+        compatibility: { DoubaoAudioStateMonitor.sessionCompatibilityActive }
     )
     private let debugWindow = DebugWindowController()
     private let updateWindow = UpdateWindowController()

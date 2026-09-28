@@ -48,7 +48,11 @@ enum VoiceSessionSelfTest {
         var openResults = [RemoteMicrophoneOpenResult]()
         var preferredRemote: VoiceRemoteID? = .chromecast
 
-        init(initialState: DoubaoAudioStateMonitor.State = .inactive) {
+        init(
+            initialState: DoubaoAudioStateMonitor.State = .inactive,
+            compatibility: Bool = false,
+            style: VoiceTriggerStyle = .tapToggle
+        ) {
             doubao = FakeDoubaoState(state: initialState)
             var routeSink: ((Bool) -> Void)?
             var triggerSink: (() -> Void)?
@@ -57,6 +61,8 @@ enum VoiceSessionSelfTest {
                 doubaoState: doubao,
                 setRemoteRouteActive: { routeSink?($0) },
                 triggerTap: { triggerSink?() },
+                triggerStyle: { style },
+                compatibility: { compatibility },
                 now: { nowSink?() ?? Date(timeIntervalSince1970: 0) }
             )
             routeSink = { [weak self] active in
@@ -134,6 +140,8 @@ enum VoiceSessionSelfTest {
         testChromecastReasonZeroWhileClosedIsIgnored(checks)
         testIndependentRemoteStops(checks)
         testDebouncedRetry(checks)
+        testCompatOpenSurvivesVerification(checks)
+        testCompatKeyboardPushToTalk(checks)
         emit("[SELF-TEST] completed failures=\(checks.failures)")
         return checks.failures == 0
     }
@@ -278,6 +286,52 @@ enum VoiceSessionSelfTest {
         c.expect(
             h.coordinator.debugSnapshot.openRequestedRemote == .chromecast,
             "only the sent retry becomes pending"
+        )
+    }
+
+    private static func testCompatOpenSurvivesVerification(_ c: CheckContext) {
+        let h = Harness(compatibility: true)
+        h.beginChromecastPress()
+        h.advance(0.15)
+        h.endChromecastPress()
+        c.expect(
+            h.coordinator.debugSnapshot.phase == "opening",
+            "compat tap begins opening"
+        )
+        RunLoop.current.run(until: Date().addingTimeInterval(1.35))
+        c.expect(
+            h.coordinator.debugSnapshot.phase == "open",
+            "compat session survives the 1s capture verification"
+        )
+        h.doubao.emit(.inactive)
+        c.expect(
+            h.coordinator.debugSnapshot.phase == "open",
+            "compat idle snapshot never closes a live session"
+        )
+        h.doubao.emit(.unavailable)
+        c.expect(
+            h.coordinator.debugSnapshot.phase == "closed",
+            "compat unavailable snapshot closes the session"
+        )
+    }
+
+    private static func testCompatKeyboardPushToTalk(_ c: CheckContext) {
+        let h = Harness(compatibility: true, style: .pushToTalk)
+        h.coordinator.triggerDownObserved(isSynthetic: false)
+        c.expect(h.openRequests.count == 1, "compat keyboard push opens transport")
+        h.coordinator.triggerUpObserved(isSynthetic: false)
+        c.expect(
+            h.triggerTapCount == 0,
+            "compat push-to-talk release synthesizes no extra trigger"
+        )
+        c.expect(
+            h.coordinator.debugSnapshot.phase == "closing",
+            "compat push-to-talk release closes the session"
+        )
+        RunLoop.current.run(until: Date().addingTimeInterval(1.5))
+        c.expect(
+            h.coordinator.debugSnapshot.phase == "closed",
+            "compat close verification finishes"
         )
     }
 }

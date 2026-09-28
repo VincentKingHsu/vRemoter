@@ -33,6 +33,32 @@ final class DoubaoAudioStateMonitor {
 
     private static let targetDeviceName = "vRemoteDr 2ch"
 
+    /// Whether the macOS 14.2+ per-process capture API actually works on this
+    /// system. The constants are present in older SDKs, but on macOS 13 the
+    /// queries fail, so this is probed once against our own process.
+    static let processAudioAPISupported: Bool = {
+        let objectID = processObject(
+            for: ProcessInfo.processInfo.processIdentifier
+        )
+        guard objectID != kAudioObjectUnknown else { return false }
+        return uint32Property(
+            object: objectID,
+            selector: kAudioProcessPropertyIsRunningInput,
+            scope: kAudioObjectPropertyScopeGlobal
+        ) != nil
+    }()
+
+    /// Compatibility mode drives the voice session purely from remote and
+    /// keyboard trigger events, because per-process capture detection is
+    /// unavailable (macOS < 14.2). An explicit user default overrides the
+    /// runtime probe.
+    static var sessionCompatibilityActive: Bool {
+        if UserDefaults.standard.object(forKey: AppStorage.voiceCompatibilityKey) != nil {
+            return UserDefaults.standard.bool(forKey: AppStorage.voiceCompatibilityKey)
+        }
+        return !processAudioAPISupported
+    }
+
     /// One CoreAudio process object per monitored input-method bundle ID.
     private struct Binding {
         let pid: pid_t
@@ -43,6 +69,7 @@ final class DoubaoAudioStateMonitor {
     private var bindings = [String: Binding]()
     private var monitoredBundleIDs = [String]()
     private var lastSnapshot: Snapshot?
+    private var compatPollTimer: Timer?
 
     /// Bundle ID of the input method that produced the current snapshot, when
     /// one is bound. Used for diagnostics and for the status line.
@@ -72,6 +99,22 @@ final class DoubaoAudioStateMonitor {
         guard !started else { return }
         started = true
 
+        guard !Self.sessionCompatibilityActive else {
+            print(
+                "[DOUBAO-STATE] 兼容模式：进程级 CoreAudio 检测不可用，" +
+                "改为输入法进程存在性 + 按键事件驱动"
+            )
+            let timer = Timer(timeInterval: 2.0, repeats: true) { [weak self] _ in
+                DispatchQueue.main.async {
+                    self?.publishCurrentSnapshot(force: false)
+                }
+            }
+            RunLoop.main.add(timer, forMode: .common)
+            compatPollTimer = timer
+            publishCurrentSnapshot(force: true)
+            return
+        }
+
         var address = Self.processListAddress
         let status = AudioObjectAddPropertyListenerBlock(
             AudioObjectID(kAudioObjectSystemObject),
@@ -88,6 +131,8 @@ final class DoubaoAudioStateMonitor {
     func stop() {
         guard started else { return }
         started = false
+        compatPollTimer?.invalidate()
+        compatPollTimer = nil
         unbindAll()
 
         var address = Self.processListAddress
@@ -104,6 +149,9 @@ final class DoubaoAudioStateMonitor {
     /// the key event reaches the input method, so the returned value is the old
     /// state that the trigger press is about to toggle.
     func snapshotNow() -> Snapshot {
+        if Self.sessionCompatibilityActive {
+            return readCompatSnapshot()
+        }
         refreshBindingsIfNeeded()
         return readCurrentSnapshot()
     }
@@ -223,6 +271,10 @@ final class DoubaoAudioStateMonitor {
     }
 
     private func readCurrentSnapshot() -> Snapshot {
+        if Self.sessionCompatibilityActive {
+            return readCompatSnapshot()
+        }
+
         guard !bindings.isEmpty else {
             activeHostBundleID = nil
             return emptySnapshot(state: .unavailable)
@@ -271,6 +323,28 @@ final class DoubaoAudioStateMonitor {
             inputDeviceIDs: deviceIDs,
             inputDeviceNames: deviceIDs.map(Self.deviceName)
         )
+    }
+
+    /// Compatibility snapshot: on systems without the per-process capture API,
+    /// "ready" can only mean the input-method process is alive. Whether it is
+    /// actually capturing is unknowable, so the state machine must never use
+    /// `.inactive` to close an open session.
+    private func readCompatSnapshot() -> Snapshot {
+        for bundleID in AppStorage.voiceInputHost.bundleIDs {
+            guard let app = NSRunningApplication.runningApplications(
+                withBundleIdentifier: bundleID
+            ).first(where: { !$0.isTerminated }) else { continue }
+            activeHostBundleID = bundleID
+            return Snapshot(
+                state: .inactive,
+                pid: app.processIdentifier,
+                processObjectID: nil,
+                inputDeviceIDs: [],
+                inputDeviceNames: []
+            )
+        }
+        activeHostBundleID = nil
+        return emptySnapshot(state: .unavailable)
     }
 
     private func emptySnapshot(state: State) -> Snapshot {

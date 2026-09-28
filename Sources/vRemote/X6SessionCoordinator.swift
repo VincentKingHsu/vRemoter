@@ -74,6 +74,7 @@ final class X6SessionCoordinator {
     private let triggerDown: () -> Void
     private let triggerUp: () -> Void
     private let triggerStyleProvider: () -> VoiceTriggerStyle
+    private let compatibilityProvider: () -> Bool
     private let now: () -> Date
 
     private var phase: Phase = .closed
@@ -113,6 +114,7 @@ final class X6SessionCoordinator {
         triggerStyle: @escaping () -> VoiceTriggerStyle = {
             AppStorage.voiceTriggerStyle
         },
+        compatibility: @escaping () -> Bool = { AppStorage.voiceCompatibility },
         now: @escaping () -> Date = Date.init
     ) {
         self.doubaoState = doubaoState
@@ -121,6 +123,7 @@ final class X6SessionCoordinator {
         self.triggerDown = triggerDown
         self.triggerUp = triggerUp
         self.triggerStyleProvider = triggerStyle
+        self.compatibilityProvider = compatibility
         self.now = now
     }
 
@@ -429,6 +432,16 @@ final class X6SessionCoordinator {
             "[TRIGGER] UP source=keyboard phase=\(phase.rawValue) " +
             "owner=\(owner.rawValue)"
         )
+        // Compatibility push-to-talk: the physical release is the only
+        // reliable end-of-utterance signal, so close on it instead of waiting
+        // for a capture-state reconciliation that can never arrive.
+        if compatibilityProvider(),
+           usesPushToTalk,
+           phase == .opening || phase == .open
+        {
+            closeRecognitionFromRemote(reason: "push-to-talk release (compat)")
+            return
+        }
         reconcileSoon(after: 0.03)
         reconcileSoon(after: 0.15)
     }
@@ -499,6 +512,9 @@ final class X6SessionCoordinator {
                 // The opening verification owns this transient idle window.
                 break
             case .open, .closing:
+                // Compatibility mode cannot observe capture state, so an
+                // idle-looking snapshot must never tear down a live session.
+                if compatibilityProvider() { return }
                 finalizeClosed(reason: "Doubao inactive")
             case .closed:
                 if routeActive || !streamingRemotes.isEmpty {
@@ -813,6 +829,33 @@ final class X6SessionCoordinator {
             else { return }
             self.startVerificationWorkItem = nil
             let snapshot = self.doubaoState.snapshotNow()
+
+            // Compatibility mode (macOS < 14.2): capture state is unobservable,
+            // so "the input-method process is alive" is the strongest signal
+            // available. Keep the session open and let trigger events own the
+            // rest of its lifetime.
+            if self.compatibilityProvider() {
+                guard snapshot.state != .unavailable else {
+                    self.finalizeClosed(reason: "opening timeout")
+                    self.publish("\(self.hostLabel)未启动 · 遥控器自动关闭")
+                    return
+                }
+                self.phase = .open
+                self.activateRemoteRoute()
+                if let remote = self.sessionRemote,
+                   !self.streamingRemotes.contains(remote),
+                   self.openRequestedRemote != remote
+                {
+                    self.requestRemoteTransportOpen(
+                        remote,
+                        bypassDebounce: false,
+                        attempt: 1
+                    )
+                }
+                self.publish("\(self.hostLabel)录音中 · 兼容模式")
+                return
+            }
+
             if snapshot.isRecording {
                 self.handleDoubaoSnapshot(snapshot)
                 return
