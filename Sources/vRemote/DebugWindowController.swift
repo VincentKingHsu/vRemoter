@@ -255,6 +255,8 @@ private final class ConsoleViewModel: ObservableObject {
     @Published var x6Connected = false
     @Published var chromecastConnected = false
     @Published var inputTriggerKey = AppStorage.inputTriggerKey
+    @Published var voiceInputHost = AppStorage.voiceInputHost
+    @Published var voiceTriggerStyle = AppStorage.voiceTriggerStyle
     @Published var activeModal: ConsoleModal?
     @Published var showX6MicHint = !UserDefaults.standard.bool(
         forKey: "vRemoter.hasCompletedX6MicTest"
@@ -267,6 +269,7 @@ private final class ConsoleViewModel: ObservableObject {
     var onMacInputEnabledChanged: ((Bool) -> Void)?
     var onRemoteInputEnabledChanged: ((Bool) -> Void)?
     var onInputTriggerChanged: (() -> Void)?
+    var onVoiceInputHostChanged: (() -> Void)?
     var onRemoteMappingEnabledChanged: ((SupportedRemoteID, Bool) -> Void)?
 
     var doubaoUsesVRemote: Bool { doubaoInput.contains("vRemoteDr 2ch") }
@@ -278,6 +281,31 @@ private final class ConsoleViewModel: ObservableObject {
         inputTriggerKey = trigger
         AppStorage.inputTriggerKey = trigger
         onInputTriggerChanged?()
+    }
+
+    /// Switching the host also adopts the trigger that matches that input
+    /// method's own default shortcut, so nothing has to be reconfigured inside
+    /// the input method itself.
+    func setVoiceInputHost(_ host: VoiceInputHost) {
+        guard voiceInputHost != host else { return }
+        voiceInputHost = host
+        AppStorage.voiceInputHost = host
+        if let key = VoiceInputDefaults.triggerKey(for: host) {
+            inputTriggerKey = key
+            AppStorage.inputTriggerKey = key
+        }
+        if let style = VoiceInputDefaults.triggerStyle(for: host) {
+            voiceTriggerStyle = style
+            AppStorage.voiceTriggerStyle = style
+        }
+        onInputTriggerChanged?()
+        onVoiceInputHostChanged?()
+    }
+
+    func setVoiceTriggerStyle(_ style: VoiceTriggerStyle) {
+        guard voiceTriggerStyle != style else { return }
+        voiceTriggerStyle = style
+        AppStorage.voiceTriggerStyle = style
     }
 
     func setRemoteMappingEnabled(_ enabled: Bool, remote: SupportedRemoteID) {
@@ -435,6 +463,7 @@ final class DebugWindowController: NSWindowController, NSWindowDelegate {
     var onMacInputEnabledChanged: ((Bool) -> Void)?
     var onRemoteInputEnabledChanged: ((Bool) -> Void)?
     var onInputTriggerChanged: (() -> Void)?
+    var onVoiceInputHostChanged: (() -> Void)?
     var onRemoteMappingEnabledChanged: ((SupportedRemoteID, Bool) -> Void)?
 
     private let model = ConsoleViewModel()
@@ -476,6 +505,9 @@ final class DebugWindowController: NSWindowController, NSWindowDelegate {
         }
         model.onInputTriggerChanged = { [weak self] in
             self?.onInputTriggerChanged?()
+        }
+        model.onVoiceInputHostChanged = { [weak self] in
+            self?.onVoiceInputHostChanged?()
         }
         model.onRemoteMappingEnabledChanged = { [weak self] remote, enabled in
             self?.onRemoteMappingEnabledChanged?(remote, enabled)
@@ -870,20 +902,47 @@ private struct KeyMappingView: View {
                 HStack(spacing: 7) {
                     Image(systemName: "waveform.badge.mic")
                         .foregroundStyle(ConsoleTheme.green)
-                    Text(L10n.text("豆包语音触发键", "Doubao voice trigger"))
+                    Text(L10n.text("语音输入法联动", "Voice input method"))
                         .font(.system(size: 17, weight: .semibold))
                         .foregroundStyle(ConsoleTheme.text)
                 }
                 Text(L10n.text(
-                    "遥控器语音键与电脑键盘都使用这个按键控制豆包。这里必须与豆包输入法中的语音快捷键保持一致。",
-                    "The remote voice key and Mac keyboard both use this trigger. It must match Doubao Input Method's voice shortcut."
+                    "选择你要用遥控器控制的输入法。遥控器和电脑键盘共用同一个触发键，它必须与该输入法里的语音快捷键一致。",
+                    "Choose the input method the remote drives. The remote voice key and the Mac keyboard share one trigger, and it must match that input method's voice shortcut."
                 ))
                     .font(.system(size: 12.5))
                     .foregroundStyle(ConsoleTheme.secondary)
                     .fixedSize(horizontal: false, vertical: true)
+                if model.voiceInputHost == .weType {
+                    Label(
+                        L10n.text(
+                            "微信输入法没有麦克风选择器；请把系统默认输入设备设为 vRemoteDr 2ch。",
+                            "WeChat Input Method follows the system default input; set it to vRemoteDr 2ch."
+                        ),
+                        systemImage: "info.circle.fill"
+                    )
+                    .font(.system(size: 10.5, weight: .medium))
+                    .foregroundStyle(ConsoleTheme.amber)
+                    .fixedSize(horizontal: false, vertical: true)
+                }
             }
             Spacer(minLength: 10)
             VStack(alignment: .trailing, spacing: 7) {
+                Picker(
+                    L10n.text("输入法", "Input method"),
+                    selection: Binding(
+                        get: { model.voiceInputHost },
+                        set: model.setVoiceInputHost
+                    )
+                ) {
+                    ForEach(VoiceInputHost.allCases) { host in
+                        Text(host.title).tag(host)
+                    }
+                }
+                .labelsHidden()
+                .frame(width: 168)
+                .disabled(model.remoteStreaming)
+
                 Picker(
                     L10n.text("触发键", "Trigger"),
                     selection: Binding(
@@ -896,8 +955,24 @@ private struct KeyMappingView: View {
                     }
                 }
                 .labelsHidden()
-                .frame(width: 158)
+                .frame(width: 168)
                 .disabled(model.remoteStreaming)
+
+                Picker(
+                    L10n.text("触发方式", "Trigger style"),
+                    selection: Binding(
+                        get: { model.voiceTriggerStyle },
+                        set: model.setVoiceTriggerStyle
+                    )
+                ) {
+                    ForEach(VoiceTriggerStyle.allCases) { style in
+                        Text(style.title).tag(style)
+                    }
+                }
+                .labelsHidden()
+                .frame(width: 168)
+                .disabled(model.remoteStreaming)
+
                 if model.inputTriggerKey == .function {
                     Label(
                         L10n.text("Fn 需在本机测试", "Test Fn on this Mac"),

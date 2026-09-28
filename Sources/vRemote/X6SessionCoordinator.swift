@@ -18,6 +18,10 @@ protocol DoubaoAudioStateProviding: AnyObject {
         get set
     }
 
+    /// Name of the input method currently being observed, so user-facing status
+    /// text stays correct for WeChat Input Method as well as Doubao.
+    var activeHostTitle: String? { get }
+
     func start()
     func stop()
     func snapshotNow() -> DoubaoAudioStateMonitor.Snapshot
@@ -67,6 +71,9 @@ final class X6SessionCoordinator {
     private let doubaoState: any DoubaoAudioStateProviding
     private let setRemoteRouteActive: (Bool) -> Void
     private let triggerTap: () -> Void
+    private let triggerDown: () -> Void
+    private let triggerUp: () -> Void
+    private let triggerStyleProvider: () -> VoiceTriggerStyle
     private let now: () -> Date
 
     private var phase: Phase = .closed
@@ -84,6 +91,11 @@ final class X6SessionCoordinator {
     private var openRetryWorkItem: DispatchWorkItem?
     private var openConfirmationWorkItem: DispatchWorkItem?
 
+    /// True while this coordinator is holding the synthetic trigger down for
+    /// push-to-talk recognition. Tracked so a stuck trigger is never left
+    /// behind when a session ends.
+    private var triggerIsHeld = false
+
     var preferredRemoteProvider: (() -> VoiceRemoteID?)?
     var onMicrophoneOpenRequested:
         ((VoiceRemoteID, Bool) -> RemoteMicrophoneOpenResult)?
@@ -96,11 +108,19 @@ final class X6SessionCoordinator {
             AudioPipe.shared.setRemoteActive($0)
         },
         triggerTap: @escaping () -> Void = { Key.triggerTap() },
+        triggerDown: @escaping () -> Void = { Key.triggerDown() },
+        triggerUp: @escaping () -> Void = { Key.triggerUp() },
+        triggerStyle: @escaping () -> VoiceTriggerStyle = {
+            AppStorage.voiceTriggerStyle
+        },
         now: @escaping () -> Date = Date.init
     ) {
         self.doubaoState = doubaoState
         self.setRemoteRouteActive = setRemoteRouteActive
         self.triggerTap = triggerTap
+        self.triggerDown = triggerDown
+        self.triggerUp = triggerUp
+        self.triggerStyleProvider = triggerStyle
         self.now = now
     }
 
@@ -189,7 +209,7 @@ final class X6SessionCoordinator {
 
         switch phase {
         case .opening, .open:
-            publish("豆包录音中 · 遥控器已接入")
+            publish("\(hostLabel)录音中 · 遥控器已接入")
 
         case .closed:
             // Chromecast reserves reason 0x03 for a physical voice press, so
@@ -283,7 +303,17 @@ final class X6SessionCoordinator {
                 bypassDebounce: true,
                 attempt: 1
             )
-            publish("豆包录音中 · 遥控器持续收音")
+            publish("\(hostLabel)录音中 · 遥控器持续收音")
+            return
+        }
+
+        // Push-to-talk: lifting the remote voice key ends the utterance, so
+        // recognition has to close with it instead of staying latched.
+        if usesPushToTalk, phase == .opening || phase == .open {
+            print(
+                "[VOICE-SESSION] push-to-talk release remote=\(remote.rawValue)"
+            )
+            closeRecognitionFromRemote(reason: "push-to-talk release")
             return
         }
 
@@ -297,7 +327,7 @@ final class X6SessionCoordinator {
         // it immediately before its HID toggle-off edge. Only the proven
         // Chromecast physical-tap path above performs an immediate recovery.
         if phase == .open || phase == .opening {
-            publish("豆包仍开启 · 遥控器音频已停止")
+            publish("\(hostLabel)仍开启 · 遥控器音频已停止")
         } else if streamingRemotes.isEmpty {
             scheduleRouteClose(after: 0.08)
         }
@@ -412,6 +442,7 @@ final class X6SessionCoordinator {
         owner = .none
         sessionRemote = nil
         physicalVoiceGestures.removeAll()
+        releaseHeldTrigger()
         closeRouteAndTransports()
         publish("已手动关闭")
     }
@@ -444,11 +475,11 @@ final class X6SessionCoordinator {
                         attempt: 1
                     )
                 }
-                publish("豆包录音中 · \(snapshot.deviceSummary)")
+                publish("\(hostLabel)录音中 · \(snapshot.deviceSummary)")
 
             case .open:
                 activateRemoteRoute()
-                publish("豆包录音中 · \(snapshot.deviceSummary)")
+                publish("\(hostLabel)录音中 · \(snapshot.deviceSummary)")
 
             case .closing:
                 // CoreAudio can remain active briefly after the trigger has
@@ -474,13 +505,13 @@ final class X6SessionCoordinator {
                     closeRouteAndTransports()
                 }
             }
-            publish("豆包已就绪")
+            publish("\(hostLabel)已就绪")
 
         case .unavailable:
             if phase != .opening {
                 finalizeClosed(reason: "Doubao unavailable")
             }
-            publish("等待豆包输入法")
+            publish("等待\(hostLabel)")
         }
     }
 
@@ -504,7 +535,7 @@ final class X6SessionCoordinator {
                 attempt: 1
             )
         }
-        publish("豆包录音中 · \(snapshot.deviceSummary)")
+        publish("\(hostLabel)录音中 · \(snapshot.deviceSummary)")
     }
 
     // MARK: - State transitions
@@ -533,7 +564,7 @@ final class X6SessionCoordinator {
         sessionRemote = remote
         activateRemoteRoute()
         if sendTrigger {
-            triggerTap()
+            sendOpenTrigger()
         }
         if requestTransportImmediately {
             requestRemoteTransportOpen(
@@ -545,9 +576,49 @@ final class X6SessionCoordinator {
         scheduleStartVerification(for: generation)
         publish(
             owner == .keyboard
-                ? "豆包正在启动 · 遥控器已预热"
-                : "遥控器已启动 · 正在打开豆包"
+                ? "\(hostLabel)正在启动 · 遥控器已预热"
+                : "遥控器已启动 · 正在打开\(hostLabel)"
         )
+    }
+
+    // MARK: - Trigger emission
+
+    /// Doubao toggles on a short modifier tap; WeChat Input Method is driven by
+    /// a held trigger. The configured style decides which one is synthesized.
+    private var usesPushToTalk: Bool {
+        triggerStyleProvider() == .pushToTalk
+    }
+
+    /// User-facing name of the input method being driven.
+    private var hostLabel: String {
+        doubaoState.activeHostTitle ?? "输入法"
+    }
+
+    private func sendOpenTrigger() {
+        guard usesPushToTalk else {
+            triggerTap()
+            return
+        }
+        guard !triggerIsHeld else { return }
+        triggerIsHeld = true
+        triggerDown()
+        print("[TRIGGER] push-to-talk DOWN")
+    }
+
+    private func sendCloseTrigger() {
+        guard usesPushToTalk else {
+            triggerTap()
+            return
+        }
+        releaseHeldTrigger()
+    }
+
+    /// Guarantees the synthetic trigger is never left down when a session ends.
+    private func releaseHeldTrigger() {
+        guard triggerIsHeld else { return }
+        triggerIsHeld = false
+        triggerUp()
+        print("[TRIGGER] push-to-talk UP")
     }
 
     private func closeRecognitionFromRemote(reason: String) {
@@ -575,7 +646,7 @@ final class X6SessionCoordinator {
         owner = .none
         openRequestedRemote = nil
         if sendTrigger {
-            triggerTap()
+            sendCloseTrigger()
         }
         scheduleRouteClose(after: 0.10)
         scheduleCloseVerification(for: generation)
@@ -593,6 +664,7 @@ final class X6SessionCoordinator {
         owner = .none
         sessionRemote = nil
         physicalVoiceGestures.removeAll()
+        releaseHeldTrigger()
         closeRouteAndTransports()
         print("[VOICE-SESSION] closed reason=\(reason)")
     }
@@ -746,7 +818,7 @@ final class X6SessionCoordinator {
                 return
             }
             self.finalizeClosed(reason: "opening timeout")
-            self.publish("豆包未启动 · 遥控器自动关闭")
+            self.publish("\(self.hostLabel)未启动 · 遥控器自动关闭")
         }
         startVerificationWorkItem = work
         DispatchQueue.main.asyncAfter(deadline: .now() + 1.0, execute: work)
@@ -775,13 +847,13 @@ final class X6SessionCoordinator {
                         attempt: 1
                     )
                 }
-                self.publish("豆包仍在录音 · 请再次关闭")
+                self.publish("\(self.hostLabel)仍在录音 · 请再次关闭")
                 print(
                     "[VOICE-SESSION] close not observed; restored open state"
                 )
             } else {
                 self.finalizeClosed(reason: "close verification")
-                self.publish("豆包已就绪")
+                self.publish("\(self.hostLabel)已就绪")
             }
         }
         closeVerificationWorkItem = work
