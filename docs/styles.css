@@ -151,7 +151,9 @@ figcaption { margin-top: 11px; color: var(--secondary); font-size: 11px; }
 .remote-card h3 { font-size: 22px; }
 .remote-card p { margin-bottom: 14px; color: var(--green); font-size: 12px; font-weight: 750; }
 .remote-card span { color: var(--secondary); line-height: 1.6; }
+.remote-card .card-tagline { font-size: 12px; }
 .boundary-note { max-width: 920px; margin: 20px 0 0; font-size: 12px; }
+.tech-detail { max-width: 920px; margin: 6px 0 0; color: var(--muted); font-size: 11px; opacity: .72; }
 
 .voice-band { background: #08090a; }
 .voice-layout { padding-block: 108px; display: grid; grid-template-columns: .86fr 1.14fr; gap: 72px; align-items: start; }

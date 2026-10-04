@@ -34,9 +34,9 @@ Chromecast Remote 已实现语音键双模式：短按第一次打开、第二�
 - 启用映射后拦截设备原始动作，再由 vRemoter 发送所选键盘、媒体键或自定义快捷键；关闭映射即可恢复系统原行为。
 - 主控制台去掉 X6 专属措辞，X6 与 Chromecast Remote 可以同时连接。
 
-![vRemoter 1.1.0 音频控制台](docs/assets/screenshots/vremoter-audio-1.1.0.png)
+![vRemoter 1.1.1 音频控制台](docs/assets/screenshots/vremoter-audio-1.1.1.png)
 
-![vRemoter 1.1.0 Chromecast 按键映射](docs/assets/screenshots/vremoter-mapping-chromecast-1.1.0.png)
+![vRemoter 1.1.1 Chromecast 按键映射](docs/assets/screenshots/vremoter-mapping-chromecast-1.1.1.png)
 
 完整历史见 [CHANGELOG.md](CHANGELOG.md)。
 
