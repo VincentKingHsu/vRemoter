@@ -552,6 +552,13 @@ class LevelMeter(QWidget):
 		self.rms_db = self.peak_db = self.hold_db = self.FLOOR
 		self.hold_since = 0.0
 		self.clip_until = 0.0
+		self.live = False  # history scrolls only while the remote mic streams; it holds still in between
+
+	def set_live(self, live):
+		if self.live and not live and self.history and self.history[-1] is not None:
+			self.history.append(None)  # stop mark: closes this mic session off from the next
+		self.live = live
+		self.update()
 
 	def reset(self):
 		self.history.clear()
@@ -566,7 +573,8 @@ class LevelMeter(QWidget):
 			peak = max(abs(s) for s in block)
 			self.rms_db = max(self.FLOOR, dbfs(math.sqrt(sum(s * s for s in block) / len(block))))
 			self.peak_db = max(self.FLOOR, dbfs(peak))
-			self.history.append((self.rms_db, self.peak_db, recording))
+			if self.live:
+				self.history.append((self.rms_db, self.peak_db, recording))
 			now = time.monotonic()
 			if self.peak_db >= self.hold_db or now - self.hold_since > self.HOLD:
 				self.hold_db, self.hold_since = self.peak_db, now
@@ -603,8 +611,12 @@ class LevelMeter(QWidget):
 		col_w = (graph_right - graph_left) / columns
 		bottom = top + height
 		start = columns - len(self.history)
-		for i, (rms_db, peak_db, recording) in enumerate(self.history):
+		for i, entry in enumerate(self.history):
 			x = graph_left + (start + i) * col_w
+			if entry is None:
+				p.fillRect(QRectF(x + col_w / 2 - 0.5, top, 1, height), QColor("#5b6270"))
+				continue
+			rms_db, peak_db, recording = entry
 			if recording:
 				p.fillRect(QRectF(x, top, col_w + 0.5, height), QColor(229, 72, 77, 40))
 			y_rms = self.y_of(rms_db, top, height)
@@ -616,6 +628,8 @@ class LevelMeter(QWidget):
 		p.setPen(QColor("#8b93a1"))
 		p.drawText(graph_left, bottom + 2, 120, 14, Qt.AlignmentFlag.AlignLeft, f"-{self.HISTORY} 秒")
 		p.drawText(graph_right - 60, bottom + 2, 60, 14, Qt.AlignmentFlag.AlignRight, "现在")
+		if not self.live:
+			p.drawText(graph_left + 6, top, 200, 14, Qt.AlignmentFlag.AlignLeft, "未开麦，历史已暂停")
 
 		# Peak meter: gradient zones dimmed, lit up to the current peak, RMS as a darker inner bar, hold marker.
 		mx = w - self.METER_WIDTH - 4
@@ -750,6 +764,7 @@ class RecordingTab(QWidget):
 			self.end()
 
 	def mic_state(self, state):
+		self.meter.set_live(state == "streaming")
 		if self.manual or not self.auto.isChecked():
 			return
 		if state == "streaming":
