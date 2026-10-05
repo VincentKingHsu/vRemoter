@@ -10,6 +10,7 @@ A front end over the two background services:
 """
 
 import array
+import collections
 import math
 import os
 import re
@@ -19,10 +20,10 @@ import time
 import wave
 
 from PyQt6 import QtDBus
-from PyQt6.QtCore import QProcess, QStringListModel, Qt, QTimer, pyqtSlot
-from PyQt6.QtGui import QFont, QStandardItem, QStandardItemModel
+from PyQt6.QtCore import QProcess, QRectF, QStringListModel, Qt, QTimer, pyqtSlot
+from PyQt6.QtGui import QColor, QFont, QPainter, QPen, QStandardItem, QStandardItemModel
 from PyQt6.QtWidgets import (QApplication, QCheckBox, QComboBox, QCompleter, QGridLayout, QGroupBox, QHBoxLayout, QHeaderView, QLabel, QListWidget, QListWidgetItem, QMainWindow,
-								QMessageBox, QPlainTextEdit, QProgressBar, QPushButton, QSpinBox, QTableWidget, QTableWidgetItem, QTabWidget, QVBoxLayout, QWidget)
+								QMessageBox, QPlainTextEdit, QPushButton, QSpinBox, QTableWidget, QTableWidgetItem, QTabWidget, QVBoxLayout, QWidget)
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import vremoter_linux as daemon  # noqa: E402
@@ -532,6 +533,109 @@ class MappingTab(QWidget):
 		self.status.setText(f"已保存并重启映射服务（{time.strftime('%H:%M:%S')}）")
 
 
+class LevelMeter(QWidget):
+	"""Scrolling level history (newest on the right) next to a peak meter with peak hold and a clip lamp, in dBFS."""
+
+	FLOOR = -60.0
+	BLOCK = SAMPLE_RATE // 20  # 50 ms per history column
+	HISTORY = 15  # seconds kept on screen
+	HOLD = 1.5  # seconds the peak-hold marker stays before falling
+	GRID = (-6, -12, -20, -30, -40, -50)
+	METER_WIDTH = 26
+	LABEL_WIDTH = 34
+
+	def __init__(self):
+		super().__init__()
+		self.setMinimumHeight(190)
+		self.history = collections.deque(maxlen=self.HISTORY * SAMPLE_RATE // self.BLOCK)  # (rms_db, peak_db, recording)
+		self.block = array.array("h")
+		self.rms_db = self.peak_db = self.hold_db = self.FLOOR
+		self.hold_since = 0.0
+		self.clip_until = 0.0
+
+	def reset(self):
+		self.history.clear()
+		self.block = array.array("h")
+		self.rms_db = self.peak_db = self.hold_db = self.FLOOR
+		self.update()
+
+	def feed(self, chunk, recording):
+		self.block.extend(chunk)
+		while len(self.block) >= self.BLOCK:
+			block, self.block = self.block[:self.BLOCK], self.block[self.BLOCK:]
+			peak = max(abs(s) for s in block)
+			self.rms_db = max(self.FLOOR, dbfs(math.sqrt(sum(s * s for s in block) / len(block))))
+			self.peak_db = max(self.FLOOR, dbfs(peak))
+			self.history.append((self.rms_db, self.peak_db, recording))
+			now = time.monotonic()
+			if self.peak_db >= self.hold_db or now - self.hold_since > self.HOLD:
+				self.hold_db, self.hold_since = self.peak_db, now
+			if peak >= 32760:
+				self.clip_until = now + self.HOLD
+			self.update()
+
+	def y_of(self, db, top, height):
+		return top + height * min(1.0, max(0.0, db / self.FLOOR))
+
+	@staticmethod
+	def zone_color(db):
+		return QColor("#e5484d") if db > -3 else QColor("#f5a524") if db > -12 else QColor("#30a46c")
+
+	def paintEvent(self, _event):
+		p = QPainter(self)
+		p.setRenderHint(QPainter.RenderHint.Antialiasing, False)
+		w, h = self.width(), self.height()
+		top, height = 6, h - 22
+		graph_left, graph_right = self.LABEL_WIDTH, w - self.METER_WIDTH - 10
+		p.fillRect(self.rect(), QColor("#16181d"))
+
+		# Grid and dB labels.
+		p.setFont(QFont("monospace", 7))
+		for db in self.GRID:
+			y = int(self.y_of(db, top, height))
+			p.setPen(QPen(QColor("#3a3f4b"), 1, Qt.PenStyle.DotLine))
+			p.drawLine(graph_left, y, graph_right, y)
+			p.setPen(QColor("#8b93a1"))
+			p.drawText(0, y - 6, self.LABEL_WIDTH - 4, 12, Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter, str(db))
+
+		# History: one column per block, RMS filled, peak as a thin cap; recorded stretches shaded behind.
+		columns = self.history.maxlen
+		col_w = (graph_right - graph_left) / columns
+		bottom = top + height
+		start = columns - len(self.history)
+		for i, (rms_db, peak_db, recording) in enumerate(self.history):
+			x = graph_left + (start + i) * col_w
+			if recording:
+				p.fillRect(QRectF(x, top, col_w + 0.5, height), QColor(229, 72, 77, 40))
+			y_rms = self.y_of(rms_db, top, height)
+			p.fillRect(QRectF(x, y_rms, col_w + 0.5, bottom - y_rms), self.zone_color(rms_db))
+			y_peak = self.y_of(peak_db, top, height)
+			p.fillRect(QRectF(x, y_peak, col_w + 0.5, 1.5), self.zone_color(peak_db).lighter(140))
+
+		# Time axis.
+		p.setPen(QColor("#8b93a1"))
+		p.drawText(graph_left, bottom + 2, 120, 14, Qt.AlignmentFlag.AlignLeft, f"-{self.HISTORY} 秒")
+		p.drawText(graph_right - 60, bottom + 2, 60, 14, Qt.AlignmentFlag.AlignRight, "现在")
+
+		# Peak meter: gradient zones dimmed, lit up to the current peak, RMS as a darker inner bar, hold marker.
+		mx = w - self.METER_WIDTH - 4
+		zones = ((self.FLOOR, -12), (-12, -3), (-3, 0))
+		for lo, hi in zones:
+			y_hi, y_lo = self.y_of(hi, top, height), self.y_of(lo, top, height)
+			color = self.zone_color(hi - 0.1)
+			p.fillRect(QRectF(mx, y_hi, self.METER_WIDTH, y_lo - y_hi), color.darker(400))
+			lit_top = max(y_hi, self.y_of(self.peak_db, top, height))
+			if lit_top < y_lo:
+				p.fillRect(QRectF(mx, lit_top, self.METER_WIDTH, y_lo - lit_top), color)
+		y_rms = self.y_of(self.rms_db, top, height)
+		p.fillRect(QRectF(mx + self.METER_WIDTH / 3, y_rms, self.METER_WIDTH / 3, bottom - y_rms), QColor(255, 255, 255, 90))
+		if self.hold_db > self.FLOOR:
+			p.fillRect(QRectF(mx, self.y_of(self.hold_db, top, height) - 1, self.METER_WIDTH, 2), QColor("#ffffff"))
+		clipped = time.monotonic() < self.clip_until
+		p.fillRect(QRectF(mx, bottom + 4, self.METER_WIDTH, 10), QColor("#e5484d") if clipped else QColor("#3a1f22"))
+		p.end()
+
+
 class RecordingTab(QWidget):
 	"""Level meter, manual / automatic recording from the remote mic, playback and ATVVoice gain."""
 
@@ -551,9 +655,7 @@ class RecordingTab(QWidget):
 
 		meter_box = QGroupBox(f"电平（{SOURCE_NAME}）")
 		meter_layout = QVBoxLayout(meter_box)
-		self.meter = QProgressBar()
-		self.meter.setRange(-60, 0)
-		self.meter.setFormat("%v dBFS")
+		self.meter = LevelMeter()
 		self.meter_text = QLabel("未开麦时为静音")
 		meter_layout.addWidget(self.meter)
 		meter_layout.addWidget(self.meter_text)
@@ -605,7 +707,7 @@ class RecordingTab(QWidget):
 	def start_capture(self):
 		if SOURCE_NAME not in run("pactl", "list", "short", "sources"):
 			# pw-record would silently fall back to another mic; wait for ATVVoice to publish the source.
-			self.meter.setValue(-60)
+			self.meter.reset()
 			self.meter_text.setText("遥控器麦克风不存在（遥控器未连接或 ATVVoice 未运行），稍后自动重试")
 			QTimer.singleShot(2000, self.start_capture)
 			return
@@ -617,7 +719,7 @@ class RecordingTab(QWidget):
 	def capture_finished(self, code, _status):
 		if code != 0:
 			error = bytes(self.capture.readAllStandardError()).decode(errors="replace").strip().splitlines()
-			self.meter.setValue(-60)
+			self.meter.reset()
 			self.meter_text.setText(f"pw-record 退出（{code}）：{error[0] if error else '无输出'}，稍后自动重试")
 		QTimer.singleShot(2000, self.start_capture)
 
@@ -632,7 +734,7 @@ class RecordingTab(QWidget):
 			self.samples.extend(chunk)
 		peak = max(abs(s) for s in chunk)
 		rms = math.sqrt(sum(s * s for s in chunk) / len(chunk))
-		self.meter.setValue(int(max(-60, dbfs(rms))))
+		self.meter.feed(chunk, self.recording)
 		self.meter_text.setText(f"平均 {dbfs(rms):6.1f} dBFS   峰值 {dbfs(peak):6.1f} dBFS" + ("   ● 录音中" if self.recording else ""))
 
 	def toggle_manual(self, on):
