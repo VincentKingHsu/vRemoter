@@ -712,26 +712,26 @@ class RecordingTab(QWidget):
 		if self.player and self.player.state() != QProcess.ProcessState.NotRunning:
 			self.player.kill()
 
+	@staticmethod
+	def atvv_command():
+		"""The effective atvvoice command line, whichever unit file or drop-in it comes from ('' if unknown)."""
+		match = re.search(r"argv\[\]=([^;]*)", run("systemctl", "--user", "show", "atvvoice", "-p", "ExecStart", "--value"))
+		return match.group(1).strip() if match else ""
+
 	def current_gain(self):
-		try:
-			text = open(ATVV_OVERRIDE).read()
-		except OSError:
-			return 20
-		match = re.search(r"(?:-g|--gain)[ =](\d+)", text)
-		return int(match.group(1)) if match else 20
+		match = re.search(r"(?:-g|--gain)[ =](\d+)", self.atvv_command())
+		return int(match.group(1)) if match else 20  # ATVVoice's own default
 
 	def apply_gain(self):
-		try:
-			lines = open(ATVV_OVERRIDE).read().splitlines()
-		except OSError as e:
-			QMessageBox.warning(self, "无法修改增益", str(e))
+		command = self.atvv_command()
+		if not command:
+			QMessageBox.warning(self, "无法修改增益", "读不到 atvvoice 服务的启动命令（systemctl --user show atvvoice）")
 			return
-		for i, line in enumerate(lines):
-			if line.startswith("ExecStart=") and line != "ExecStart=":
-				command = re.sub(r"\s(?:-g|--gain)[ =]\d+", "", line)
-				lines[i] = f"{command} --gain {self.gain.value()}"
+		command = re.sub(r"\s(?:-g|--gain)[ =]\d+", "", command)
+		# A drop-in leaves the installed unit alone; the empty ExecStart= clears the unit's own line first.
+		os.makedirs(os.path.dirname(ATVV_OVERRIDE), exist_ok=True)
 		with open(ATVV_OVERRIDE, "w") as f:
-			f.write("\n".join(lines) + "\n")
+			f.write(f"[Service]\nExecStart=\nExecStart={command} --gain {self.gain.value()}\n")
 		run("systemctl", "--user", "daemon-reload")
 		restart_service("atvvoice")
 
