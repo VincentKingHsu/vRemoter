@@ -543,11 +543,13 @@ class LevelMeter(QWidget):
 	GRID = (-6, -12, -20, -30, -40, -50)
 	METER_WIDTH = 26
 	LABEL_WIDTH = 34
+	TAKE_AVG = QColor("#4cc9f0")  # per-recording average (RMS) line
+	TAKE_PEAK = QColor("#f472b6")  # per-recording peak line
 
 	def __init__(self):
 		super().__init__()
 		self.setMinimumHeight(190)
-		self.history = collections.deque(maxlen=self.HISTORY * SAMPLE_RATE // self.BLOCK)  # (rms_db, peak_db, recording)
+		self.history = collections.deque(maxlen=self.HISTORY * SAMPLE_RATE // self.BLOCK)  # (rms_db, peak_db, recording, mean_square, peak)
 		self.block = array.array("h")
 		self.rms_db = self.peak_db = self.hold_db = self.FLOOR
 		self.hold_since = 0.0
@@ -571,16 +573,31 @@ class LevelMeter(QWidget):
 		while len(self.block) >= self.BLOCK:
 			block, self.block = self.block[:self.BLOCK], self.block[self.BLOCK:]
 			peak = max(abs(s) for s in block)
-			self.rms_db = max(self.FLOOR, dbfs(math.sqrt(sum(s * s for s in block) / len(block))))
+			mean_square = sum(s * s for s in block) / len(block)
+			self.rms_db = max(self.FLOOR, dbfs(math.sqrt(mean_square)))
 			self.peak_db = max(self.FLOOR, dbfs(peak))
 			if self.live:
-				self.history.append((self.rms_db, self.peak_db, recording))
+				self.history.append((self.rms_db, self.peak_db, recording, mean_square, peak))
 			now = time.monotonic()
 			if self.peak_db >= self.hold_db or now - self.hold_since > self.HOLD:
 				self.hold_db, self.hold_since = self.peak_db, now
 			if peak >= 32760:
 				self.clip_until = now + self.HOLD
 			self.update()
+
+	def recorded_runs(self):
+		"""(first, last) history indices of each unbroken recorded stretch."""
+		runs, first = [], None
+		for i, entry in enumerate(self.history):
+			if entry is not None and entry[2]:
+				if first is None:
+					first = i
+			elif first is not None:
+				runs.append((first, i - 1))
+				first = None
+		if first is not None:
+			runs.append((first, len(self.history) - 1))
+		return runs
 
 	def y_of(self, db, top, height):
 		return top + height * min(1.0, max(0.0, db / self.FLOOR))
@@ -616,7 +633,7 @@ class LevelMeter(QWidget):
 			if entry is None:
 				p.fillRect(QRectF(x + col_w / 2 - 0.5, top, 1, height), QColor("#5b6270"))
 				continue
-			rms_db, peak_db, recording = entry
+			rms_db, peak_db, recording = entry[:3]
 			if recording:
 				p.fillRect(QRectF(x, top, col_w + 0.5, height), QColor(229, 72, 77, 40))
 			y_rms = self.y_of(rms_db, top, height)
@@ -624,10 +641,47 @@ class LevelMeter(QWidget):
 			y_peak = self.y_of(peak_db, top, height)
 			p.fillRect(QRectF(x, y_peak, col_w + 0.5, 1.5), self.zone_color(peak_db).lighter(140))
 
-		# Time axis.
+		# Each recorded stretch gets its own average and peak, the same two figures as its entry in the recordings list.
+		p.setFont(QFont("monospace", 7))
+		for first, last in self.recorded_runs():
+			blocks = [self.history[i] for i in range(first, last + 1)]
+			avg_db = max(self.FLOOR, dbfs(math.sqrt(sum(b[3] for b in blocks) / len(blocks))))
+			peak_db = max(self.FLOOR, dbfs(max(b[4] for b in blocks)))
+			x0, x1 = graph_left + (start + first) * col_w, graph_left + (start + last + 1) * col_w
+			chips = []
+			for db, color, name, above in ((peak_db, self.TAKE_PEAK, "峰", True), (avg_db, self.TAKE_AVG, "均", False)):
+				y = self.y_of(db, top, height)
+				p.fillRect(QRectF(x0, y - 1, x1 - x0, 2), color)
+				if x1 - x0 <= 48:
+					continue
+				# Peak value above its line and average below its, flipped to the other side when that would leave the graph,
+				# and moved left of the other chip if the two would overlap; on a dark chip so the bars don't swallow them.
+				text = f"{name} {round(db)}"
+				tw = p.fontMetrics().horizontalAdvance(text) + 6
+				chip_y = y - 14 if above else y + 2
+				if chip_y < top:
+					chip_y = y + 2
+				elif chip_y + 12 > bottom:
+					chip_y = y - 14
+				chip = QRectF(x1 - tw - 2, chip_y, tw, 12)
+				for other in chips:
+					if chip.intersects(other):
+						chip.moveRight(other.left() - 4)
+				chips.append(chip)
+				p.fillRect(chip, QColor(22, 24, 29, 210))
+				p.setPen(color)
+				p.drawText(chip, Qt.AlignmentFlag.AlignCenter, text)
+
+		# Time axis and legend.
 		p.setPen(QColor("#8b93a1"))
 		p.drawText(graph_left, bottom + 2, 120, 14, Qt.AlignmentFlag.AlignLeft, f"-{self.HISTORY} 秒")
 		p.drawText(graph_right - 60, bottom + 2, 60, 14, Qt.AlignmentFlag.AlignRight, "现在")
+		legend_x = graph_left + (graph_right - graph_left) // 2 - 80
+		for i, (color, name) in enumerate(((self.TAKE_AVG, "录音段平均"), (self.TAKE_PEAK, "录音段峰值"))):
+			x = legend_x + i * 90
+			p.fillRect(QRectF(x, bottom + 8, 14, 2), color)
+			p.setPen(QColor("#8b93a1"))
+			p.drawText(x + 18, bottom + 2, 70, 14, Qt.AlignmentFlag.AlignLeft, name)
 		if not self.live:
 			p.drawText(graph_left + 6, top, 200, 14, Qt.AlignmentFlag.AlignLeft, "未开麦，历史已暂停")
 
