@@ -725,8 +725,19 @@ class RecordingTab(QWidget):
 		meter_layout = QVBoxLayout(meter_box)
 		self.meter = LevelMeter()
 		self.meter_text = QLabel("未开麦时为静音")
+		# Recording badge, always in place so nothing shifts: grey when idle, a blinking red pill with the elapsed time while recording.
+		self.rec_badge = QLabel()
+		self.rec_badge.setAlignment(Qt.AlignmentFlag.AlignCenter)
+		self.set_badge_idle()
+		self.rec_badge.setMinimumWidth(self.rec_badge.fontMetrics().horizontalAdvance("● 录音中  888.8 秒") + 40)
+		self.rec_started = 0.0
+		self.rec_blink = QTimer(self)
+		self.rec_blink.timeout.connect(self.update_badge)
 		meter_layout.addWidget(self.meter)
-		meter_layout.addWidget(self.meter_text)
+		status_row = QHBoxLayout()
+		status_row.addWidget(self.meter_text, 1)
+		status_row.addWidget(self.rec_badge)
+		meter_layout.addLayout(status_row)
 		layout.addWidget(meter_box)
 
 		controls = QHBoxLayout()
@@ -803,7 +814,7 @@ class RecordingTab(QWidget):
 		peak = max(abs(s) for s in chunk)
 		rms = math.sqrt(sum(s * s for s in chunk) / len(chunk))
 		self.meter.feed(chunk, self.recording)
-		self.meter_text.setText(f"平均 {dbfs(rms):6.1f} dBFS   峰值 {dbfs(peak):6.1f} dBFS" + ("   ● 录音中" if self.recording else ""))
+		self.meter_text.setText(f"平均 {dbfs(rms):6.1f} dBFS   峰值 {dbfs(peak):6.1f} dBFS")
 
 	def toggle_manual(self, on):
 		self.manual = on
@@ -830,11 +841,28 @@ class RecordingTab(QWidget):
 		if not self.recording:
 			self.samples = array.array("h")
 			self.recording = True
+			self.rec_started = time.monotonic()
+			self.rec_badge.setStyleSheet(self.BADGE_STYLE.format(bg="#e5484d", fg="white"))
+			self.update_badge()
+			self.rec_blink.start(500)
+
+	BADGE_STYLE = "background: {bg}; color: {fg}; font-weight: bold; font-size: 15px; padding: 3px 12px; border-radius: 11px;"
+
+	def set_badge_idle(self):
+		self.rec_badge.setStyleSheet(self.BADGE_STYLE.format(bg="#d9dce1", fg="#6b7280"))
+		self.rec_badge.setText("○ 未录音")
+
+	def update_badge(self):
+		elapsed = time.monotonic() - self.rec_started
+		dot = "●" if int(elapsed * 2) % 2 == 0 else "○"
+		self.rec_badge.setText(f"{dot} 录音中  {elapsed:4.1f} 秒")
 
 	def end(self):
 		if not self.recording:
 			return
 		self.recording = False
+		self.rec_blink.stop()
+		self.set_badge_idle()
 		if len(self.samples) < SAMPLE_RATE // 10:
 			return
 		path = os.path.join(RECORDINGS_DIR, time.strftime("remote-%Y%m%d-%H%M%S.wav"))
