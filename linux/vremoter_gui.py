@@ -409,8 +409,9 @@ def mapping_model():
 class TokenCompleter(QCompleter):
 	"""Completes only the token after the last '+' or '&', so combos like KEY_LEFTCTRL+KEY_T can be typed piece by piece."""
 
-	def __init__(self, model, parent=None):
-		super().__init__(model, parent)
+	def __init__(self, model, line_edit):
+		super().__init__(model, line_edit)
+		self.line_edit = line_edit  # widget() is the combo box when the line edit belongs to one
 		self.setCaseSensitivity(Qt.CaseSensitivity.CaseInsensitive)
 		self.setFilterMode(Qt.MatchFlag.MatchContains)
 		self.setMaxVisibleItems(15)
@@ -419,7 +420,7 @@ class TokenCompleter(QCompleter):
 		return [re.split(r"[+&]", path)[-1].strip()]
 
 	def pathFromIndex(self, index):
-		text = self.widget().text()
+		text = self.line_edit.text()
 		cut = max(text.rfind("+"), text.rfind("&"))
 		head = text[:cut + 1] if cut >= 0 else ""
 		if head.endswith("&"):
@@ -477,7 +478,7 @@ class MappingTab(QWidget):
 			combo.setInsertPolicy(QComboBox.InsertPolicy.NoInsert)
 			combo.setModel(self.model)
 			combo.setMaxVisibleItems(25)
-			combo.lineEdit().setCompleter(TokenCompleter(self.completion, combo))  # not combo.setCompleter: that selects rows of the combo model
+			combo.lineEdit().setCompleter(TokenCompleter(self.completion, combo.lineEdit()))  # not combo.setCompleter: that selects rows of the combo model
 			text = spec_to_text(spec)
 			combo.setCurrentIndex(combo.findText(text))  # so the popup opens on it; -1 if not listed
 			combo.setCurrentText(text)
