@@ -27,8 +27,10 @@ volume_down = "KEY_VOLUMEDOWN"
 youtube = "none"                  # e.g. ["atvv:hold", "KEY_RIGHTALT+KEY_0"] for push-to-talk in a voice input app
 netflix = "none"                  # e.g. ["atvv:hold", "KEY_F9"] for fcitx5 vocotype push-to-talk
 input = "none"                    # e.g. "KEY_LEFTMETA"
+# Declared in the remote's HID descriptor but sent by no key on this remote (likely shared with other Google TV remotes).
 play_pause = "KEY_PLAYPAUSE"
 search = "none"
+usage_79 = "none"
 
 [voice]
 # ATVVoice instance; its D-Bus name is org.atvvoice.<atvvoice_name>.

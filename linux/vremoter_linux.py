@@ -8,8 +8,10 @@ and publishes its state on the session D-Bus. This daemon covers the rest of wha
    no longer reach the desktop, and re-emits the configured key, key combo, command or ATVVoice action instead.
 2. Watches ATVVoice's MicStateChanged signal and runs user commands when the remote microphone starts or stops streaming.
 
-Button identities follow the remote's HID report descriptor (Consumer page usages), the same table vRemoter's macOS
-RemoteProfiles.chromecastButtons is built from.
+Button identities follow the remote's HID report descriptor (Consumer page usages). The descriptor is an array of 17
+usages; the remote sends the 1-based index of the pressed one, which the macOS app uses as its button id. Only 15 of
+them are physical keys (the 15th, Voice, arrives over ATVV instead), and the macOS RemoteProfiles.chromecastButtons
+lists just those. See BUTTONS for the other three.
 """
 
 import argparse
@@ -31,23 +33,27 @@ PRODUCT_ID = 0x9450
 
 # HID Consumer usage (as reported in EV_MSC/MSC_SCAN, page 0x0C) -> button name.
 # Report index in parentheses matches the button id used by the macOS app.
+# play_pause (02), search (09) and usage_79 (10) are declared in the descriptor but no key on this remote sends them
+# (never seen in testing, and absent from the macOS button list). Most likely the descriptor is shared with other Google
+# TV remotes that do have those keys. They stay here so a stray report is still grabbed and can be mapped from the config
+# file; the GUI's mapping table hides them.
 BUTTONS = {
 	0x000C019E: "power",  # (01) AL Terminal Lock; kernel maps to KEY_SCREENLOCK
-	0x000C00CD: "play_pause",  # (02)
+	0x000C00CD: "play_pause",  # (02) descriptor only; no such key on this remote
 	0x000C0042: "up",  # (03)
 	0x000C0043: "down",  # (04)
 	0x000C0044: "left",  # (05)
 	0x000C0045: "right",  # (06)
 	0x000C0041: "select",  # (07)
 	0x000C00E2: "mute",  # (08)
-	0x000C0221: "search",  # (09) AC Search; voice itself arrives over ATVV, not here
+	0x000C0221: "search",  # (09) AC Search, descriptor only; the Voice key sends START_SEARCH over ATVV, not this usage
 	0x000C0223: "home",  # (0A)
 	0x000C0224: "back",  # (0B)
 	0x000C00E9: "volume_up",  # (0C)
 	0x000C00EA: "volume_down",  # (0D)
 	0x000C0077: "youtube",  # (0E) kernel maps to KEY_CAMERA_ACCESS_DISABLE
 	0x000C0078: "netflix",  # (0F) kernel maps to KEY_CAMERA_ACCESS_TOGGLE
-	0x000C0079: "usage_79",  # (10) kernel maps to KEY_KBDILLUMUP; no known physical key
+	0x000C0079: "usage_79",  # (10) descriptor only; probably another app key on other models; kernel maps to KEY_KBDILLUMUP
 	0x000C0089: "input",  # (11) kernel maps to KEY_TV
 }
 

@@ -65,6 +65,9 @@ REMOTE_LAYOUT = [
 	["youtube", "mute", "netflix"],
 	["volume_down", None, "volume_up"],
 ]
+# The 15 physical keys in layout order. The HID descriptor also declares play_pause, search and usage_79, which no key on
+# this remote sends; the mapping table hides them but keeps their configured values.
+PHYSICAL_BUTTONS = [name for row in REMOTE_LAYOUT for name in row if name]
 # Mapping drop-down: (group, [(action, description), ...]). Every evdev key name is appended after these, and the edit box
 # completes key names token by token, so anything the daemon accepts can be picked or typed.
 MAPPING_GROUPS = [
@@ -465,14 +468,24 @@ class MappingTab(QWidget):
 
 	def fill(self, specs):
 		usages = {name: usage for usage, name in daemon.BUTTONS.items()}
+		self.hidden = {name: spec for name, spec in specs.items() if name not in PHYSICAL_BUTTONS}
 		self.table.setRowCount(0)
-		for name, spec in specs.items():
+		for name in PHYSICAL_BUTTONS:
 			row = self.table.rowCount()
 			self.table.insertRow(row)
 			item = QTableWidgetItem(f"{BUTTON_LABELS.get(name, name)}  ({name})")
 			item.setData(Qt.ItemDataRole.UserRole, name)
 			item.setFlags(item.flags() & ~Qt.ItemFlag.ItemIsEditable)
 			self.table.setItem(row, 0, item)
+			if name not in specs:
+				# The voice key never reaches the HID device: ATVVoice handles it over the ATVV GATT service.
+				note = QTableWidgetItem("由 ATVVoice 处理：短按开/关遥控器麦克风，按住说话（不可映射）")
+				note.setFlags(Qt.ItemFlag.ItemIsEnabled)
+				self.table.setItem(row, 1, note)
+				self.table.setItem(row, 2, QTableWidgetItem("ATVV"))
+				self.table.item(row, 2).setFlags(Qt.ItemFlag.ItemIsEnabled)
+				continue
+			spec = specs[name]
 			combo = QComboBox()
 			combo.setEditable(True)
 			combo.setInsertPolicy(QComboBox.InsertPolicy.NoInsert)
@@ -502,9 +515,11 @@ class MappingTab(QWidget):
 		self.status.setText("已恢复默认（尚未保存）")
 
 	def save(self):
-		buttons = {}
+		buttons = dict(self.hidden)
 		for row in range(self.table.rowCount()):
 			name = self.table.item(row, 0).data(Qt.ItemDataRole.UserRole)
+			if self.table.cellWidget(row, 1) is None:
+				continue
 			spec = text_to_spec(self.table.cellWidget(row, 1).currentText())
 			try:
 				daemon.Target(spec)
