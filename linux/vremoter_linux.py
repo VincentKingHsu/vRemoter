@@ -84,6 +84,11 @@ DEFAULT_VOICE = {
 	"on_stop": "",
 }
 
+# enabled = false leaves the remote ungrabbed, so its keys keep the kernel's default behaviour (voice hooks still run).
+DEFAULT_GENERAL = {
+	"enabled": True,
+}
+
 ATVV_INTERFACE = "org.atvvoice.Daemon"
 ATVV_PATH = "/org/atvvoice/Daemon"
 # ATVVoice D-Bus methods per action: (on press, on release).
@@ -145,6 +150,7 @@ class Target:
 def load_config(path):
 	buttons = dict(DEFAULT_BUTTONS)
 	voice = dict(DEFAULT_VOICE)
+	general = dict(DEFAULT_GENERAL)
 	if os.path.exists(path):
 		with open(path, "rb") as f:
 			data = tomllib.load(f)
@@ -153,10 +159,11 @@ def load_config(path):
 			raise ValueError(f"unknown button names in {path}: {', '.join(sorted(unknown))}")
 		buttons.update(data.get("buttons", {}))
 		voice.update(data.get("voice", {}))
+		general.update(data.get("general", {}))
 		log(f"[config] loaded {path}")
 	else:
 		log(f"[config] {path} not found; using defaults")
-	return {name: Target(spec) for name, spec in buttons.items()}, voice
+	return {name: Target(spec) for name, spec in buttons.items()}, voice, general
 
 
 def run_command(command, label):
@@ -319,20 +326,25 @@ def main():
 	args = parser.parse_args()
 
 	try:
-		targets, voice = load_config(args.config)
+		targets, voice, general = load_config(args.config)
 	except (ValueError, tomllib.TOMLDecodeError) as e:
 		log(f"[config] error: {e}")
 		return 2
 	if args.check:
+		log(f"  {'enabled':12} {general['enabled']}")
 		for name, target in targets.items():
 			log(f"  {name:12} {target.spec or 'none'}")
 		return 0
 
 	dbus.mainloop.glib.DBusGMainLoop(set_as_default=True)
 	atvv = AtvVoice(dbus.SessionBus(), voice)
-	remapper = Remapper(targets, atvv)
-	remapper.poll_device()
-	GLib.timeout_add_seconds(2, remapper.poll_device)
+	remapper = None
+	if general["enabled"]:
+		remapper = Remapper(targets, atvv)
+		remapper.poll_device()
+		GLib.timeout_add_seconds(2, remapper.poll_device)
+	else:
+		log("[main] mapping disabled (general.enabled = false); the remote keeps its default keys")
 
 	loop = GLib.MainLoop()
 	for signum in (signal.SIGTERM, signal.SIGINT):
@@ -341,8 +353,9 @@ def main():
 	try:
 		loop.run()
 	finally:
-		remapper.drop_device()
-		remapper.uinput.close()
+		if remapper:
+			remapper.drop_device()
+			remapper.uinput.close()
 	return 0
 
 

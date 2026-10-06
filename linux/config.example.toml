@@ -12,6 +12,10 @@
 #
 # Omitted buttons keep the defaults shown here.
 
+[general]
+# false = leave the remote alone: its keys keep the kernel's default behaviour (the voice hooks below still run).
+enabled = true
+
 [buttons]
 power = "none"                    # kernel default would be KEY_SCREENLOCK
 up = "KEY_UP"
