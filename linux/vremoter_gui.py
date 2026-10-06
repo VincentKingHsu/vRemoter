@@ -173,6 +173,28 @@ def run(*cmd, timeout=3):
 		return ""
 
 
+# atvvoice command-line flags the console reads and rewrites (regex for the flag name, value follows after a space or '=').
+GAIN_FLAG = r"(?:-g|--gain)"
+HIGHPASS_FLAG = r"--highpass"
+FADE_IN_FLAG = r"--fade-in"
+
+# Recommended audio settings for the Chromecast Voice Remote (measured 2026-10-05): 8 dB keeps close speech under
+# clipping, an 80 Hz high-pass removes the mic's power-up "pop" and DC offset, a 20 ms fade-in hides the first step.
+RECOMMENDED_GAIN_DB = 8
+RECOMMENDED_HIGHPASS_HZ = 80
+RECOMMENDED_FADE_IN_MS = 20
+
+
+def flag_value(command, flag):
+	"""Numeric value of a flag in an atvvoice command line, or None when absent."""
+	match = re.search(rf"(?:^|\s){flag}[ =]([0-9.]+)", command)
+	return float(match.group(1)) if match else None
+
+
+def strip_flag(command, flag):
+	return re.sub(rf"\s{flag}[ =][0-9.]+", "", command)
+
+
 def dbfs(value):
 	return 20 * math.log10(value / 32768) if value > 0 else -120.0
 
@@ -750,18 +772,50 @@ class RecordingTab(QWidget):
 		controls.addWidget(self.auto, 1)
 		layout.addLayout(controls)
 
-		gain_box = QGroupBox("ATVVoice 增益（改动后会重启 ATVVoice）")
+		gain_box = QGroupBox("ATVVoice 音频处理（改动后会重启 ATVVoice）")
 		gain_layout = QHBoxLayout(gain_box)
+		command = self.atvv_command()
 		self.gain = QSpinBox()
 		self.gain.setRange(0, 40)
 		self.gain.setSuffix(" dB")
-		self.gain.setValue(self.current_gain())
+		self.gain.setValue(int(flag_value(command, GAIN_FLAG) or 20))  # ATVVoice's own default
+		self.highpass_on = QCheckBox("高通滤波")
+		self.highpass_on.setToolTip("去掉遥控器麦克风上电时约 250 ms 的直流衰减（开头的「噗」声）和残留的直流偏移")
+		self.highpass = QSpinBox()
+		self.highpass.setRange(20, 300)
+		self.highpass.setSuffix(" Hz")
+		self.fade_in_on = QCheckBox("淡入")
+		self.fade_in_on.setToolTip("每次开麦时从静音渐入，去掉第一帧的台阶")
+		self.fade_in = QSpinBox()
+		self.fade_in.setRange(1, 200)
+		self.fade_in.setSuffix(" ms")
+		filters = ((self.highpass_on, self.highpass, HIGHPASS_FLAG, RECOMMENDED_HIGHPASS_HZ), (self.fade_in_on, self.fade_in, FADE_IN_FLAG, RECOMMENDED_FADE_IN_MS))
+		for check, spin, flag, default in filters:
+			value = flag_value(command, flag) or 0
+			check.setChecked(value > 0)
+			spin.setValue(int(value) if value > 0 else default)
+			spin.setEnabled(value > 0)
+			check.toggled.connect(spin.setEnabled)
+		if not self.atvv_supports_filters(command):
+			for widget in (self.highpass_on, self.highpass, self.fade_in_on, self.fade_in):
+				widget.setEnabled(False)
+				widget.setToolTip("当前安装的 ATVVoice 不支持 --highpass / --fade-in，请更新到 fix/htt-voice-gesture 分支的版本")
+		reset_audio = QPushButton("重置")
+		reset_audio.setToolTip(f"恢复推荐值：增益 {RECOMMENDED_GAIN_DB} dB、高通 {RECOMMENDED_HIGHPASS_HZ} Hz、淡入 {RECOMMENDED_FADE_IN_MS} ms（点「应用」后生效）")
+		reset_audio.clicked.connect(self.reset_audio)
 		apply_gain = QPushButton("应用")
 		apply_gain.clicked.connect(self.apply_gain)
 		gain_layout.addWidget(QLabel("增益"))
 		gain_layout.addWidget(self.gain)
-		gain_layout.addWidget(apply_gain)
+		gain_layout.addSpacing(16)
+		gain_layout.addWidget(self.highpass_on)
+		gain_layout.addWidget(self.highpass)
+		gain_layout.addSpacing(16)
+		gain_layout.addWidget(self.fade_in_on)
+		gain_layout.addWidget(self.fade_in)
 		gain_layout.addStretch(1)
+		gain_layout.addWidget(reset_audio)
+		gain_layout.addWidget(apply_gain)
 		layout.addWidget(gain_box)
 
 		takes_box = QGroupBox(f"录音（保存在 {RECORDINGS_DIR}）")
@@ -917,20 +971,36 @@ class RecordingTab(QWidget):
 		match = re.search(r"argv\[\]=([^;]*)", run("systemctl", "--user", "show", "atvvoice", "-p", "ExecStart", "--value"))
 		return match.group(1).strip() if match else ""
 
-	def current_gain(self):
-		match = re.search(r"(?:-g|--gain)[ =](\d+)", self.atvv_command())
-		return int(match.group(1)) if match else 20  # ATVVoice's own default
+	@staticmethod
+	def atvv_supports_filters(command):
+		"""Whether the installed atvvoice knows --highpass / --fade-in; passing them to an older one stops the service from starting."""
+		binary = command.split()[0] if command else ""
+		return bool(binary) and "--highpass" in run(binary, "--help")
+
+	def reset_audio(self):
+		"""Put the recommended values back in the controls; like the mapping tab's reset, nothing changes until 应用."""
+		self.gain.setValue(RECOMMENDED_GAIN_DB)
+		self.highpass.setValue(RECOMMENDED_HIGHPASS_HZ)
+		self.fade_in.setValue(RECOMMENDED_FADE_IN_MS)
+		if self.highpass_on.isEnabled():
+			self.highpass_on.setChecked(True)
+			self.fade_in_on.setChecked(True)
 
 	def apply_gain(self):
 		command = self.atvv_command()
 		if not command:
-			QMessageBox.warning(self, "无法修改增益", "读不到 atvvoice 服务的启动命令（systemctl --user show atvvoice）")
+			QMessageBox.warning(self, "无法修改设置", "读不到 atvvoice 服务的启动命令（systemctl --user show atvvoice）")
 			return
-		command = re.sub(r"\s(?:-g|--gain)[ =]\d+", "", command)
+		for flag in (GAIN_FLAG, HIGHPASS_FLAG, FADE_IN_FLAG):
+			command = strip_flag(command, flag)
+		command += f" --gain {self.gain.value()}"
+		if self.atvv_supports_filters(command):
+			command += f" --highpass {self.highpass.value() if self.highpass_on.isChecked() else 0}"
+			command += f" --fade-in {self.fade_in.value() if self.fade_in_on.isChecked() else 0}"
 		# A drop-in leaves the installed unit alone; the empty ExecStart= clears the unit's own line first.
 		os.makedirs(os.path.dirname(ATVV_OVERRIDE), exist_ok=True)
 		with open(ATVV_OVERRIDE, "w") as f:
-			f.write(f"[Service]\nExecStart=\nExecStart={command} --gain {self.gain.value()}\n")
+			f.write(f"[Service]\nExecStart=\nExecStart={command}\n")
 		run("systemctl", "--user", "daemon-reload")
 		restart_service("atvvoice")
 
