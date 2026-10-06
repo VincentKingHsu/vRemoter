@@ -312,9 +312,22 @@ def bt_connected(address):
 	return False
 
 
+# unit -> monotonic time of the last restart we issued; the status panel shows 重启中 instead of a failure during the grace period.
+RESTARTED = {}
+RESTART_GRACE = 10  # seconds: the 2 s stop/start gap plus atvvoice reconnecting to the remote
+
+
 def restart_service(unit):
+	RESTARTED[unit] = time.monotonic()
 	# Stop, wait, start: an immediate restart of atvvoice can race BlueZ releasing its exclusive notify handles.
 	subprocess.Popen(["sh", "-c", f"systemctl --user stop {unit}; sleep 2; systemctl --user start {unit}"], start_new_session=True)
+
+
+def restarting(unit, check):
+	"""Replace a failing check with 重启中 while a restart we issued is still within its grace period."""
+	if check[0] != "good" and time.monotonic() - RESTARTED.get(unit, -RESTART_GRACE) < RESTART_GRACE:
+		return ("busy", "重启中…")
+	return check
 
 
 def flag_value(command, flag):
@@ -687,11 +700,11 @@ class StatusLine(QWidget):
 			layout.addWidget(self.button)
 
 	def set(self, state, value):
-		"""state: 'good', 'warn' or 'bad'."""
-		self.dot.set_color({"good": GREEN, "warn": AMBER, "bad": RED}[state])
+		"""state: 'good', 'warn', 'bad' or 'busy' (a fix is already under way, so no button)."""
+		self.dot.set_color({"good": GREEN, "warn": AMBER, "bad": RED, "busy": AMBER}[state])
 		self.value.setText(value)
 		if self.button:
-			self.button.setVisible(state != "good")
+			self.button.setVisible(state in ("warn", "bad"))
 
 
 # ── Audio page ─────────────────────────────────────────────────────────────────────────────────────────────────────────────
@@ -1846,11 +1859,11 @@ class MainWindow(QMainWindow):
 		source = run("pactl", "get-default-source")
 		self.checks = {
 			"bt": ("good", f"已连接 · {address}") if connected else ("warn", "未连接，按遥控器任意键唤醒"),
-			"atvv": ("good", {
+			"atvv": restarting("atvvoice", ("good", {
 				"streaming": "正在收音",
 				"connected": "已就绪"
-			}.get(state, state)) if state in ("streaming", "connected") else ("bad", state),
-			"map": ("good", "运行中") if active == "active" else ("bad", active or "未运行"),
+			}.get(state, state)) if state in ("streaming", "connected") else ("bad", state)),
+			"map": restarting("vremoter-linux", ("good", "运行中") if active == "active" else ("bad", active or "未运行")),
 			"mic": ("good", "遥控器麦克风") if source == SOURCE_NAME else ("warn", source or "未知"),
 		}
 		self.audio.set_checks(self.checks)
@@ -1863,6 +1876,8 @@ class MainWindow(QMainWindow):
 			color, text = AMBER, "录音中"
 		elif "bad" in states:
 			color, text = RED, "需要处理"
+		elif "busy" in states:
+			color, text = AMBER, "服务重启中"
 		elif self.checks.get("bt", ("warn", ""))[0] != "good":
 			color, text = AMBER, "等待遥控器"
 		elif "warn" in states:
