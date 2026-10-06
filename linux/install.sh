@@ -14,6 +14,8 @@ fi
 install -Dm755 "$here/vremoter_linux.py" "$HOME/.local/lib/vremoter/vremoter_linux.py"
 install -Dm755 "$here/vremoter_gui.py" "$HOME/.local/lib/vremoter/vremoter_gui.py"
 install -Dm644 "$here/vremoter-gui.desktop" "$HOME/.local/share/applications/vremoter-gui.desktop"
+install -Dm644 "$here/../Resources/RemoteImages/chromecast-voice-remote.png" "$HOME/.local/lib/vremoter/assets/chromecast-voice-remote.png"
+install -Dm644 "$here/../Design/vRemoter-Logo-v1/vRemoter-app-icon-v9.png" "$HOME/.local/lib/vremoter/assets/vRemoter-app-icon-v9.png"
 install -Dm644 "$here/vremoter-linux.service" "$HOME/.config/systemd/user/vremoter-linux.service"
 if [ ! -e "$HOME/.config/vremoter/config.toml" ]; then
 	install -Dm644 "$here/config.example.toml" "$HOME/.config/vremoter/config.toml"
