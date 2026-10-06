@@ -172,7 +172,9 @@ class Remapper:
 	def __init__(self, targets, atvv):
 		self.targets = targets
 		self.atvv = atvv
-		keys = {code for t in targets.values() for code in t.keys}
+		# Advertise a full standard keyboard, not just the mapped keys: apps that read input devices themselves (Vokie's
+		# input helper) skip devices that do not look like a keyboard, and then never see its hotkeys from the remote.
+		keys = {code for t in targets.values() for code in t.keys} | {code for code in range(ecodes.KEY_ESC, ecodes.KEY_MICMUTE + 1) if code in ecodes.KEY}
 		self.uinput = evdev.UInput({ecodes.EV_KEY: sorted(keys)}, name="vRemoter Chromecast Remote", vendor=VENDOR_ID, product=PRODUCT_ID)
 		self.device = None
 		self.watch_id = None
