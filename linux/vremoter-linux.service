@@ -1,0 +1,13 @@
+[Unit]
+Description=vRemoter for Linux - Chromecast Voice Remote button mapping and voice hooks
+After=atvvoice.service
+Wants=atvvoice.service
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/python3 %h/.local/lib/vremoter/vremoter_linux.py
+Restart=on-failure
+RestartSec=3
+
+[Install]
+WantedBy=default.target

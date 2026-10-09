@@ -17,3 +17,5 @@ Driver/build/
 uuid.txt
 x6-uuid.txt
 Recordings/
+
+__pycache__/

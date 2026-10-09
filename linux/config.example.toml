@@ -1,0 +1,44 @@
+# vRemoter for Linux configuration. Copy to ~/.config/vremoter/config.toml and edit; restart the service to apply:
+#   systemctl --user restart vremoter-linux
+#
+# Button targets:
+#   "none"                     swallow the key
+#   "KEY_ENTER"                one evdev key (names from /usr/include/linux/input-event-codes.h)
+#   "KEY_LEFTCTRL+KEY_C"       a combo, pressed in order and released in reverse
+#   "cmd:<shell command>"      run a command on key press
+#   "atvv:toggle"              ATVVoice MicToggle (also "atvv:open" / "atvv:close")
+#   "atvv:hold"                open the remote mic while the button is held, close it on release
+#   ["atvv:hold", "KEY_F9"]    a list combines actions (at most one key combo); the mic opens before keys are pressed
+#
+# Omitted buttons keep the defaults shown here.
+
+[general]
+# false = leave the remote alone: its keys keep the kernel's default behaviour (the voice hooks below still run).
+enabled = true
+
+[buttons]
+power = "none"                    # kernel default would be KEY_SCREENLOCK
+up = "KEY_UP"
+down = "KEY_DOWN"
+left = "KEY_LEFT"
+right = "KEY_RIGHT"
+select = "KEY_ENTER"
+back = "KEY_ESC"
+home = "KEY_LEFTMETA+KEY_D"       # KDE: peek at desktop
+mute = "KEY_MUTE"
+volume_up = "KEY_VOLUMEUP"
+volume_down = "KEY_VOLUMEDOWN"
+youtube = "none"                  # e.g. ["atvv:hold", "KEY_RIGHTALT+KEY_0"] for push-to-talk in a voice input app
+netflix = "none"                  # e.g. ["atvv:hold", "KEY_F9"] for fcitx5 vocotype push-to-talk
+input = "none"                    # e.g. "KEY_LEFTMETA"
+# Declared in the remote's HID descriptor but sent by no key on this remote (likely shared with other Google TV remotes).
+play_pause = "KEY_PLAYPAUSE"
+search = "none"
+usage_79 = "none"
+
+[voice]
+# ATVVoice instance; its D-Bus name is org.atvvoice.<atvvoice_name>.
+atvvoice_name = "chromecast-remote"
+# Commands run when the remote microphone starts / stops streaming (e.g. to trigger a voice input method).
+on_start = ""
+on_stop = ""
