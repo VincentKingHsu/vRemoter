@@ -1073,7 +1073,7 @@ class AudioPage(QWidget):
 		self.start_capture()
 
 	def wake_tip(self):
-		QMessageBox.information(self, "唤醒遥控器", "按遥控器任意键唤醒它，它会自动回连。\n如果长时间连不上，按住「返回 + 主页」进入配对模式后用 pair-remote.sh 重新配对。")
+		QMessageBox.information(self, "唤醒遥控器", "按遥控器任意键唤醒它，它会自动回连。\n如果长时间连不上，按住「返回 + 主页」进入配对模式后用 vremoter-pair（源码安装用 pair-remote.sh）重新配对。")
 
 	def set_checks(self, checks):
 		for row, key in ((self.bt_row, "bt"), (self.atvv_row, "atvv"), (self.map_row, "map"), (self.mic_row, "mic")):

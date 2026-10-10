@@ -1,0 +1,3 @@
+# Only the Chromecast remote's input nodes; uinput permits the active local user to emit mapped keys.
+SUBSYSTEM=="input", KERNEL=="event*", ATTRS{id/vendor}=="18d1", ATTRS{id/product}=="9450", TAG+="uaccess"
+SUBSYSTEM=="misc", KERNEL=="uinput", TAG+="uaccess", OPTIONS+="static_node=uinput"

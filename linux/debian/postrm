@@ -1,0 +1,8 @@
+#!/bin/sh
+set -eu
+if [ -d /run/systemd/system ]; then
+    deb-systemd-invoke --user daemon-reload || true
+fi
+if [ -d /run/udev ]; then
+    udevadm control --reload-rules
+fi

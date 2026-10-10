@@ -1,0 +1,16 @@
+#!/bin/sh
+set -eu
+if [ "$1" = configure ]; then
+    if [ -d /run/udev ]; then
+        udevadm control --reload-rules
+        modprobe uinput || true
+        udevadm trigger --action=change --subsystem-match=input
+        udevadm trigger --action=change --sysname-match=uinput
+    fi
+    if [ -d /run/systemd/system ]; then
+        deb-systemd-invoke --user stop vremoter-linux.service atvvoice.service || true
+        sleep 2
+        deb-systemd-invoke --user daemon-reload || true
+        deb-systemd-invoke --user start atvvoice.service vremoter-linux.service || true
+    fi
+fi

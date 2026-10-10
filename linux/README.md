@@ -12,6 +12,12 @@ ATVVoice is a BlueZ/PipeWire daemon speaking the same ATVV protocol as `Sources/
 
 ## Setup
 
+1. For the complete Debian package (console, ATVVoice, services and permissions), see [the Linux release guide](debian/RELEASE.md). Install with `pkexec apt install ./vremoter_1.1.1-1_amd64.deb`, then log out and back in.
+2. To build that package from this checkout and its sibling `ATVVoice` checkout, run `bash linux/build-deb.sh` from the `vRemoter` repository. Requires Rust/Cargo, `libpipewire-0.3-dev`, `libdbus-1-dev`, `pkg-config`, `libclang-dev`, `dpkg-dev` and `binutils`; outputs go to `dist/linux/` with SHA-256 checksums and source revision information. `ATVVOICE_SOURCE` can select another ATVVoice checkout. The build system's library versions determine the package's minimum runtime requirements.
+3. Validate a built release without installing it: `python3 linux/debian/check-package.py dist/linux/vremoter_1.1.1-1_amd64.deb` (requires the runtime Python modules and `desktop-file-utils`). Run setup migration checks with `python3 -m unittest discover -s linux/debian`.
+
+### Source installation
+
 1. Pair the remote: hold **Back + Home** until the LED pulses, then pair from `bluetoothctl` (`scan on`, `pair <addr>`, `trust <addr>`, `connect <addr>`). The remote only advertises in pairing mode.
 2. Install ATVVoice from the [vRemoter-compatible release `v0.2.0-vremote.1`](https://github.com/zhanglongqi/ATVVoice/releases/tag/v0.2.0-vremote.1) (x86_64 `.deb` or standalone binary; Ubuntu 24.04+ / glibc 2.39+). This fork includes Chromecast hold-to-talk handling, per-stream `--highpass` / `--fade-in` options, and Bluetooth adapter recovery used by this Linux integration. Use this release for the setup below, pin it to the remote and enable it:
 

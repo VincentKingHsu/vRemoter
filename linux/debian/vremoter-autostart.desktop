@@ -1,0 +1,7 @@
+[Desktop Entry]
+Type=Application
+Name=vRemoter services
+Exec=/usr/bin/vremoter-setup
+TryExec=/usr/bin/vremoter-setup
+NoDisplay=true
+Terminal=false
