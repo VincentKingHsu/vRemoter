@@ -2,21 +2,21 @@
 
 Linux port of vRemoter's Chromecast Voice Remote (VID `0x18D1` / PID `0x9450`) support. The macOS app's audio stack (CoreAudio driver, mic mixing) and Doubao integration have no Linux counterpart; this port splits the remaining work in two:
 
-| #   | Part                   | Provided by                                 | macOS equivalent                                             |
-| --- | ---------------------- | ------------------------------------------- | ------------------------------------------------------------ |
-| 1   | Remote microphone      | [ATVVoice](https://github.com/b0o/ATVVoice) | `BLEBridge` + `ATVV/` + `AudioPipe` + `vRemoteDriver.driver` |
-| 2   | Button remapping       | `vremoter_linux.py`                         | `ChromecastRemoteHIDBridge` + `RemoteMappingSupport`         |
-| 3   | Voice start/stop hooks | `vremoter_linux.py` (ATVVoice D-Bus signal) | `X6SessionCoordinator` triggering Doubao                     |
+| #   | Part                   | Provided by                                                         | macOS equivalent                                             |
+| --- | ---------------------- | ------------------------------------------------------------------- | ------------------------------------------------------------ |
+| 1   | Remote microphone      | [ATVVoice (vRemoter fork)](https://github.com/zhanglongqi/ATVVoice) | `BLEBridge` + `ATVV/` + `AudioPipe` + `vRemoteDriver.driver` |
+| 2   | Button remapping       | `vremoter_linux.py`                                                 | `ChromecastRemoteHIDBridge` + `RemoteMappingSupport`         |
+| 3   | Voice start/stop hooks | `vremoter_linux.py` (ATVVoice D-Bus signal)                         | `X6SessionCoordinator` triggering Doubao                     |
 
 ATVVoice is a BlueZ/PipeWire daemon speaking the same ATVV protocol as `Sources/vRemote/ATVV/`. It exposes the remote microphone as a PipeWire source (`atvvoice-chromecast-remote`) and publishes its state on the session D-Bus as `org.atvvoice.chromecast-remote`.
 
 ## Setup
 
 1. Pair the remote: hold **Back + Home** until the LED pulses, then pair from `bluetoothctl` (`scan on`, `pair <addr>`, `trust <addr>`, `connect <addr>`). The remote only advertises in pairing mode.
-2. Install ATVVoice from its [releases](https://github.com/b0o/ATVVoice/releases) (`.deb` / `.rpm`), pin it to the remote and enable it:
+2. Install ATVVoice from the [vRemoter-compatible release `v0.2.0-vremote.1`](https://github.com/zhanglongqi/ATVVoice/releases/tag/v0.2.0-vremote.1) (x86_64 `.deb` or standalone binary; Ubuntu 24.04+ / glibc 2.39+). This fork includes Chromecast hold-to-talk handling, per-stream `--highpass` / `--fade-in` options, and Bluetooth adapter recovery used by this Linux integration. Use this release for the setup below, pin it to the remote and enable it:
 
    ```bash
-   systemctl --user edit atvvoice   # [Service] / ExecStart= / ExecStart=/usr/bin/atvvoice --device <addr>
+   systemctl --user edit atvvoice   # [Service] / ExecStart= / ExecStart=/usr/bin/atvvoice --device <addr> --name chromecast-remote
    systemctl --user enable --now atvvoice
    ```
 
