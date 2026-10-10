@@ -415,7 +415,7 @@ def write_config(path, buttons, voice, general):
 	for name, spec in buttons.items():
 		value = "[" + ", ".join(toml_string(p) for p in spec) + "]" if isinstance(spec, list) else toml_string(spec)
 		lines.append(f"{name} = {value}")
-	lines += ["", "[voice]"] + [f"{k} = {toml_string(str(v))}" for k, v in voice.items()]
+	lines += ["", "[voice]"] + [f"{k} = {str(v).lower() if isinstance(v, bool) else toml_string(str(v))}" for k, v in voice.items()]
 	os.makedirs(os.path.dirname(path), exist_ok=True)
 	with open(path, "w") as f:
 		f.write("\n".join(lines) + "\n")
@@ -945,6 +945,11 @@ class AudioPage(QWidget):
 		self.auto = QCheckBox("语音键 / 按住开麦时自动录音")
 		self.auto.setChecked(True)
 		strip.addWidget(self.auto)
+		self.mute_output = QCheckBox("录音时静音输出")
+		self.mute_output.setToolTip("立即保存。开麦时静音当前默认输出，结束后恢复；原本已静音的输出保持静音。")
+		self.mute_output.setChecked(read_config(daemon.DEFAULT_CONFIG_PATH)[1]["mute_output"])
+		self.mute_output.toggled.connect(self.save_output_mute)
+		strip.addWidget(self.mute_output)
 		strip.addStretch(1)
 		# Recording badge, always in place so nothing shifts: grey when idle, a blinking red pill with the elapsed time while recording.
 		self.rec_badge = QLabel()
@@ -1239,6 +1244,19 @@ class AudioPage(QWidget):
 		"""Whether the installed atvvoice knows --highpass / --fade-in; passing them to an older one stops the service from starting."""
 		binary = command.split()[0] if command else ""
 		return bool(binary) and "--highpass" in run(binary, "--help")
+
+	def save_output_mute(self, enabled):
+		try:
+			buttons, voice, general = read_config(daemon.DEFAULT_CONFIG_PATH)
+			voice["mute_output"] = enabled
+			write_config(daemon.DEFAULT_CONFIG_PATH, buttons, voice, general)
+		except (OSError, daemon.tomllib.TOMLDecodeError) as e:
+			self.mute_output.blockSignals(True)
+			self.mute_output.setChecked(not enabled)
+			self.mute_output.blockSignals(False)
+			QMessageBox.warning(self, "无法保存静音设置", str(e))
+			return
+		restart_service("vremoter-linux")
 
 	def reset_audio(self):
 		"""Put the recommended values back in the controls; like the mapping page's reset, nothing changes until 应用."""
@@ -1632,6 +1650,8 @@ class MappingPage(QWidget):
 				QMessageBox.warning(self, "映射无效", f"{BUTTON_LABELS.get(name, name)}：{e}")
 				return
 			buttons[name] = row.spec
+		# The audio page can change voice settings while this page stays open.
+		self.voice = read_config(self.path)[1]
 		write_config(self.path, buttons, self.voice, {"enabled": self.enabled.isChecked()})
 		restart_service("vremoter-linux")
 		self.set_status(f"已保存并重启映射服务（{time.strftime('%H:%M:%S')}）")

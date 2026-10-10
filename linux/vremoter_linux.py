@@ -80,6 +80,7 @@ DEFAULT_BUTTONS = {
 
 DEFAULT_VOICE = {
 	"atvvoice_name": "chromecast-remote",
+	"mute_output": True,
 	"on_start": "",
 	"on_stop": "",
 }
@@ -163,6 +164,8 @@ def load_config(path):
 		log(f"[config] loaded {path}")
 	else:
 		log(f"[config] {path} not found; using defaults")
+	if not isinstance(voice["mute_output"], bool):
+		raise ValueError("voice.mute_output must be a boolean")
 	return {name: Target(spec) for name, spec in buttons.items()}, voice, general
 
 
@@ -288,6 +291,41 @@ class Remapper:
 		self.held.clear()
 
 
+class OutputMute:
+	"""Temporarily mute the default output, restoring that same device afterwards."""
+
+	def __init__(self):
+		self.sink = None
+
+	def pactl(self, *args):
+		return subprocess.run(["pactl", *args], capture_output=True, text=True, check=True, timeout=2, env={**os.environ, "LC_ALL": "C"}).stdout.strip()
+
+	def start(self):
+		if self.sink is not None:
+			return
+		try:
+			# shortcut: capture one output per recording; track sink changes if mid-recording switching needs support.
+			sink = self.pactl("get-default-sink")
+			mute = self.pactl("get-sink-mute", sink)
+			if mute not in ("Mute: yes", "Mute: no"):
+				raise ValueError(f"unexpected mute state: {mute!r}")
+			if mute == "Mute: no":
+				# Save before setting: a timeout can occur after the server applies the mute.
+				self.sink = sink
+				self.pactl("set-sink-mute", sink, "1")
+		except (OSError, subprocess.SubprocessError, ValueError) as e:
+			log(f"[voice] cannot mute output: {e}")
+
+	def restore(self):
+		if self.sink is None:
+			return
+		try:
+			self.pactl("set-sink-mute", self.sink, "0")
+			self.sink = None
+		except (OSError, subprocess.SubprocessError) as e:
+			log(f"[voice] cannot restore output: {e}")
+
+
 class AtvVoice:
 	"""Talks to the ATVVoice daemon over the session bus and runs voice hooks on its state changes."""
 
@@ -297,18 +335,41 @@ class AtvVoice:
 		self.on_start = voice["on_start"]
 		self.on_stop = voice["on_stop"]
 		self.streaming = False
-		bus.add_signal_receiver(self.on_state, signal_name="MicStateChanged", dbus_interface=ATVV_INTERFACE, path=ATVV_PATH)
+		self.mute_output = voice["mute_output"]
+		self.owner = None
+		self.output = OutputMute()
+		bus.add_signal_receiver(self.on_state, signal_name="MicStateChanged", dbus_interface=ATVV_INTERFACE, path=ATVV_PATH, bus_name=self.bus_name)
+		self.owner_watch = bus.watch_name_owner(self.bus_name, self.on_owner)
+
+	def on_owner(self, owner):
+		self.owner = owner
+		if not owner:
+			self.on_state("disconnected")
+			return
+		# Catch a stream already running when vRemoter starts or ATVVoice restarts.
+		try:
+			proxy = self.bus.get_object(owner, ATVV_PATH, introspect=False)
+			proxy.get_dbus_method("Get", "org.freedesktop.DBus.Properties")(ATVV_INTERFACE,
+																			"State",
+																			reply_handler=lambda state: self.on_state(state) if self.owner == owner else None,
+																			error_handler=lambda e: log(f"[voice] cannot read state: {e}"))
+		except dbus.DBusException as e:
+			log(f"[voice] cannot read state: {e}")
 
 	def on_state(self, state):
 		state = str(state)
 		log(f"[voice] ATVVoice state -> {state}")
 		if state == "streaming" and not self.streaming:
 			self.streaming = True
+			if self.mute_output:
+				self.output.start()
 			run_command(self.on_start, "voice on_start")
-		elif state in ("connected", "disconnected") and self.streaming:
+		elif state in ("connected", "disconnected"):
 			# "opening" is not a stop: a voice-key tap hands its hold-to-talk stream over to a persistent MIC_OPEN stream.
-			self.streaming = False
-			run_command(self.on_stop, "voice on_stop")
+			self.output.restore()
+			if self.streaming:
+				self.streaming = False
+				run_command(self.on_stop, "voice on_stop")
 
 	def call(self, method):
 		try:
@@ -353,6 +414,8 @@ def main():
 	try:
 		loop.run()
 	finally:
+		# shortcut: SIGKILL bypasses cleanup; add persistent recovery if restoration after forced termination is required.
+		atvv.output.restore()
 		if remapper:
 			remapper.drop_device()
 			remapper.uinput.close()

@@ -39,6 +39,8 @@ usage_79 = "none"
 [voice]
 # ATVVoice instance; its D-Bus name is org.atvvoice.<atvvoice_name>.
 atvvoice_name = "chromecast-remote"
+# Mute the default output while the remote mic streams, restoring it afterwards.
+mute_output = true
 # Commands run when the remote microphone starts / stops streaming (e.g. to trigger a voice input method).
 on_start = ""
 on_stop = ""

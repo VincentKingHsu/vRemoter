@@ -20,7 +20,7 @@ ATVVoice is a BlueZ/PipeWire daemon speaking the same ATVV protocol as `Sources/
    systemctl --user enable --now atvvoice
    ```
 
-3. Install this daemon (needs `python3-evdev`, `python3-dbus`, `python3-gi`, and membership in the `input` group):
+3. Install this daemon (needs `python3-evdev`, `python3-dbus`, `python3-gi`, `pulseaudio-utils` for `pactl`, and membership in the `input` group):
 
    ```bash
    ./install.sh
@@ -47,6 +47,17 @@ Arrows, mute and volume keep their usual keys. Each button can be set to a key, 
 ## Voice key
 
 The voice key never reaches evdev: it travels over ATVV and is handled by ATVVoice. `[voice] on_start` / `on_stop` in the config run commands whenever ATVVoice's state enters or leaves `streaming`, which is where a voice input method can be triggered.
+
+While the remote microphone is streaming, vRemoter automatically mutes the default audio output before running `on_start`. It restores the same output device when recording stops,
+the remote disconnects, ATVVoice exits, or vRemoter exits normally (including SIGTERM/SIGINT). An output already muted is left muted. This also works when button remapping is
+disabled. It uses `pactl` through PipeWire's PulseAudio compatibility service; failures are logged without stopping microphone capture.
+
+The output device is captured at the start of each recording; switching outputs during recording does not mute the new device. SIGKILL or a crash that bypasses cleanup can leave
+the output muted; unmute it in the desktop audio settings.
+
+The audio page's **录音时静音输出** checkbox enables or disables this behavior and saves immediately. The equivalent config setting is `[voice] mute_output = true` (the default).
+
+Run the voice mute and GUI configuration checks with `QT_QPA_PLATFORM=offscreen /usr/bin/python3 -m unittest discover -s linux -p 'test_voice_mute*.py'`.
 
 ## Logs
 
