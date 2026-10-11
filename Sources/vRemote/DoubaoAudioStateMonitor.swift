@@ -208,7 +208,7 @@ final class DoubaoAudioStateMonitor {
 
         guard let running = Self.uint32Property(
             object: processObjectID,
-            selector: kAudioProcessPropertyIsRunningInput,
+            selector: CoreAudioProcessCompat.isRunningInput,
             scope: kAudioObjectPropertyScopeGlobal
         ) else {
             return Snapshot(
@@ -222,7 +222,7 @@ final class DoubaoAudioStateMonitor {
 
         let deviceIDs = Self.objectListProperty(
             object: processObjectID,
-            selector: kAudioProcessPropertyDevices,
+            selector: CoreAudioProcessCompat.devices,
             scope: kAudioObjectPropertyScopeInput
         )
         let names = deviceIDs.map(Self.deviceName)
@@ -237,7 +237,7 @@ final class DoubaoAudioStateMonitor {
 
     private static func processObject(for pid: pid_t) -> AudioObjectID {
         var address = AudioObjectPropertyAddress(
-            mSelector: kAudioHardwarePropertyTranslatePIDToProcessObject,
+            mSelector: CoreAudioProcessCompat.translatePIDToProcessObject,
             mScope: kAudioObjectPropertyScopeGlobal,
             mElement: kAudioObjectPropertyElementMain
         )
@@ -341,7 +341,7 @@ final class DoubaoAudioStateMonitor {
 
     private static var processListAddress: AudioObjectPropertyAddress {
         AudioObjectPropertyAddress(
-            mSelector: kAudioHardwarePropertyProcessObjectList,
+            mSelector: CoreAudioProcessCompat.processObjectList,
             mScope: kAudioObjectPropertyScopeGlobal,
             mElement: kAudioObjectPropertyElementMain
         )
@@ -349,7 +349,7 @@ final class DoubaoAudioStateMonitor {
 
     private static var runningInputAddress: AudioObjectPropertyAddress {
         AudioObjectPropertyAddress(
-            mSelector: kAudioProcessPropertyIsRunningInput,
+            mSelector: CoreAudioProcessCompat.isRunningInput,
             mScope: kAudioObjectPropertyScopeGlobal,
             mElement: kAudioObjectPropertyElementMain
         )
@@ -357,7 +357,7 @@ final class DoubaoAudioStateMonitor {
 
     private static var inputDevicesAddress: AudioObjectPropertyAddress {
         AudioObjectPropertyAddress(
-            mSelector: kAudioProcessPropertyDevices,
+            mSelector: CoreAudioProcessCompat.devices,
             mScope: kAudioObjectPropertyScopeInput,
             mElement: kAudioObjectPropertyElementMain
         )

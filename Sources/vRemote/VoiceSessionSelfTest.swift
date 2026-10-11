@@ -123,6 +123,7 @@ enum VoiceSessionSelfTest {
 
     static func run() -> Bool {
         let checks = CheckContext()
+        testUnavailableDoubaoClosesSession(checks)
         testActiveBeforeRelease(checks)
         testStopBeforeActive(checks)
         testSecondTapCloses(checks)
@@ -135,6 +136,20 @@ enum VoiceSessionSelfTest {
         testDebouncedRetry(checks)
         emit("[SELF-TEST] completed failures=\(checks.failures)")
         return checks.failures == 0
+    }
+
+    private static func testUnavailableDoubaoClosesSession(_ c: CheckContext) {
+        let h = Harness(initialState: .unavailable)
+        h.coordinator.triggerDownObserved(isSynthetic: false)
+        c.expect(
+            h.openRequests.count == 1,
+            "unavailable: trigger still requests microphone open"
+        )
+        RunLoop.current.run(until: Date().addingTimeInterval(1.3))
+        c.expect(
+            h.coordinator.debugSnapshot.phase == "open",
+            "unavailable: session stays open because state cannot be verified"
+        )
     }
 
     private static func testActiveBeforeRelease(_ c: CheckContext) {

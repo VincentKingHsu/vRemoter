@@ -227,11 +227,17 @@ final class AudioPipe: NSObject, AVCaptureAudioDataOutputSampleBufferDelegate {
             mediaType: .audio,
             position: .unspecified
         )
+        // Intel Mac 上内置麦克风的 uniqueID 是 AppleHDAEngineInput:…，名字
+        // 也不含 "MacBook"（例如 "Built-in Microphone"），所以在这些机型上
+        // 前两个条件都匹配不到。discovery 已按 builtInMicrophone 过滤，因此
+        // 兜底取第一个即等价于“内置麦克风”。
         let device = discovery.devices.first {
             $0.uniqueID == "BuiltInMicrophoneDevice"
         } ?? discovery.devices.first {
             $0.localizedName.localizedCaseInsensitiveContains("MacBook")
-        }
+        } ?? discovery.devices.first {
+            $0.uniqueID.hasPrefix("AppleHDAEngineInput")
+        } ?? discovery.devices.first
         guard let device else {
             print("[AUDIO] ⚠️ 找不到 MacBook 内置麦克风")
             return
