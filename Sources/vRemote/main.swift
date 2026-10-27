@@ -283,6 +283,12 @@ final class AppController: NSObject, NSApplicationDelegate, NSMenuDelegate {
             self?.headerLabel.title = "状态 · \(status)"
             self?.updateStatus()
         }
+        // Persist the auto-detected input method so later lookups are cheap
+        // and stable, then route the system input if that method needs it.
+        let voiceInputMethod = VoiceInputMethod.current
+        VoiceInputMethod.select(voiceInputMethod)
+        print("[VOICE-IME] using \(voiceInputMethod.title)")
+        SystemInputRoute.apply(for: voiceInputMethod)
         x6Session.start()
         x6SearchSuppressor.start()
         x6.start()
@@ -486,7 +492,8 @@ final class AppController: NSObject, NSApplicationDelegate, NSMenuDelegate {
         let doubaoUsesVRemote = doubaoSnapshot.inputDeviceNames.contains("vRemoteDr 2ch")
         let statusText: String
         if doubaoSnapshot.isRecording && !doubaoUsesVRemote {
-            statusText = L10n.text("豆包输入设备错误", "Incorrect Doubao input")
+            let name = VoiceInputMethod.current.shortName
+            statusText = L10n.text("\(name)输入设备错误", "Incorrect \(name) input")
         } else if remoteStreaming {
             statusText = L10n.text("遥控器录音中", "Remote recording")
         } else if anyHID && anyBLE {
@@ -547,6 +554,12 @@ final class AppController: NSObject, NSApplicationDelegate, NSMenuDelegate {
         }
         debugWindow.onInputTriggerChanged = { [weak self] in
             self?.x6SearchSuppressor.triggerConfigurationDidChange()
+        }
+        debugWindow.onVoiceInputMethodChanged = { [weak self] method in
+            print("[VOICE-IME] switched to \(method.title)")
+            SystemInputRoute.apply(for: method)
+            self?.doubaoAudioState.targetDidChange()
+            self?.updateStatus()
         }
         debugWindow.onRemoteMappingEnabledChanged = { [weak self] remote, enabled in
             switch remote {
@@ -750,6 +763,7 @@ final class AppController: NSObject, NSApplicationDelegate, NSMenuDelegate {
         x6BLE.stop()
         chromecastBLE.stop()
         AudioPipe.shared.stop()
+        SystemInputRoute.restore()
     }
 }
 

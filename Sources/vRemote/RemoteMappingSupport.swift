@@ -127,7 +127,11 @@ enum RemoteMappingTarget: String, CaseIterable, Identifiable, Codable, Hashable 
     var title: String {
         switch self {
         case .disabled: L10n.text("禁用", "Disabled")
-        case .doubaoVoice: L10n.text("豆包语音输入", "Doubao Voice Input")
+        // The case name stays `doubaoVoice`: it is persisted in mappings.
+        case .doubaoVoice: L10n.text(
+            "\(VoiceInputMethod.current.shortName)语音输入",
+            "\(VoiceInputMethod.current.shortName) Voice Input"
+        )
         case .arrowUp: L10n.text("方向上", "Up Arrow")
         case .arrowDown: L10n.text("方向下", "Down Arrow")
         case .arrowLeft: L10n.text("方向左", "Left Arrow")

@@ -16,7 +16,10 @@ enum PermissionKind: String, Identifiable, CaseIterable {
 
     var title: String {
         switch self {
-        case .doubaoInput: L10n.text("豆包麦克风设置", "Doubao Microphone Setup")
+        case .doubaoInput:
+            VoiceInputMethod.current == .wetype
+                ? L10n.text("微信输入法麦克风设置", "WeType Microphone Setup")
+                : L10n.text("豆包麦克风设置", "Doubao Microphone Setup")
         case .microphone: L10n.text("麦克风权限", "Microphone Permission")
         case .accessibility: L10n.text("辅助功能权限", "Accessibility Permission")
         case .inputMonitoring: L10n.text("输入监控权限", "Input Monitoring Permission")
@@ -40,6 +43,9 @@ enum PermissionKind: String, Identifiable, CaseIterable {
 
     var screenshotNames: [String] {
         switch self {
+        case .doubaoInput where VoiceInputMethod.current == .wetype:
+            // No bundled screenshots yet; the guide shows its placeholder.
+            ["wetype-input0", "wetype-input1"]
         case .doubaoInput:
             [
                 "permission-app-management",
@@ -56,6 +62,17 @@ enum PermissionKind: String, Identifiable, CaseIterable {
 
     var guidance: [String] {
         switch self {
+        case .doubaoInput where VoiceInputMethod.current == .wetype:
+            return [
+                L10n.text(
+                    "微信输入法使用系统输入设备。点击下方按钮，vRemoter 会把系统输入切换为 vRemoteDr 2ch，并打开“声音 → 输入”供你确认。",
+                    "WeType records from the system input. The button below switches the system input to vRemoteDr 2ch and opens Sound > Input so you can confirm."
+                ),
+                L10n.text(
+                    "如果在微信输入法的语音设置里单独选过麦克风，请改回“跟随系统”或选择 vRemoteDr 2ch。",
+                    "If WeType's voice settings pin a specific microphone, switch it back to Follow System or choose vRemoteDr 2ch."
+                )
+            ]
         case .doubaoInput:
             return [
                 L10n.text(
@@ -255,6 +272,7 @@ private final class ConsoleViewModel: ObservableObject {
     @Published var x6Connected = false
     @Published var chromecastConnected = false
     @Published var inputTriggerKey = AppStorage.inputTriggerKey
+    @Published var voiceInputMethod = VoiceInputMethod.current
     @Published var activeModal: ConsoleModal?
     @Published var showX6MicHint = !UserDefaults.standard.bool(
         forKey: "vRemoter.hasCompletedX6MicTest"
@@ -267,6 +285,7 @@ private final class ConsoleViewModel: ObservableObject {
     var onMacInputEnabledChanged: ((Bool) -> Void)?
     var onRemoteInputEnabledChanged: ((Bool) -> Void)?
     var onInputTriggerChanged: (() -> Void)?
+    var onVoiceInputMethodChanged: ((VoiceInputMethod) -> Void)?
     var onRemoteMappingEnabledChanged: ((SupportedRemoteID, Bool) -> Void)?
 
     var doubaoUsesVRemote: Bool { doubaoInput.contains("vRemoteDr 2ch") }
@@ -278,6 +297,13 @@ private final class ConsoleViewModel: ObservableObject {
         inputTriggerKey = trigger
         AppStorage.inputTriggerKey = trigger
         onInputTriggerChanged?()
+    }
+
+    func setVoiceInputMethod(_ method: VoiceInputMethod) {
+        guard voiceInputMethod != method else { return }
+        voiceInputMethod = method
+        VoiceInputMethod.select(method)
+        onVoiceInputMethodChanged?(method)
     }
 
     func setRemoteMappingEnabled(_ enabled: Bool, remote: SupportedRemoteID) {
@@ -336,7 +362,12 @@ private final class ConsoleViewModel: ObservableObject {
 
     func openSettings(for kind: PermissionKind) {
         if kind == .doubaoInput {
-            openDoubaoSettings()
+            if voiceInputMethod.followsSystemDefaultInput {
+                SystemInputRoute.routeToVRemote()
+                openSoundInputSettings()
+            } else {
+                openDoubaoSettings()
+            }
             activeModal = nil
             return
         }
@@ -435,6 +466,7 @@ final class DebugWindowController: NSWindowController, NSWindowDelegate {
     var onMacInputEnabledChanged: ((Bool) -> Void)?
     var onRemoteInputEnabledChanged: ((Bool) -> Void)?
     var onInputTriggerChanged: (() -> Void)?
+    var onVoiceInputMethodChanged: ((VoiceInputMethod) -> Void)?
     var onRemoteMappingEnabledChanged: ((SupportedRemoteID, Bool) -> Void)?
 
     private let model = ConsoleViewModel()
@@ -476,6 +508,9 @@ final class DebugWindowController: NSWindowController, NSWindowDelegate {
         }
         model.onInputTriggerChanged = { [weak self] in
             self?.onInputTriggerChanged?()
+        }
+        model.onVoiceInputMethodChanged = { [weak self] method in
+            self?.onVoiceInputMethodChanged?(method)
         }
         model.onRemoteMappingEnabledChanged = { [weak self] remote, enabled in
             self?.onRemoteMappingEnabledChanged?(remote, enabled)
@@ -735,7 +770,10 @@ private struct StudioMixerView: View {
     private var statusPanel: some View {
         VStack(spacing: 0) {
             StatusRow(
-                title: L10n.text("豆包输入设备", "Doubao input"),
+                title: L10n.text(
+                    "\(model.voiceInputMethod.shortName)输入设备",
+                    "\(model.voiceInputMethod.shortName) input"
+                ),
                 value: model.doubaoIsRecording
                     ? (model.doubaoUsesVRemote
                         ? L10n.text("vRemoteDr 2ch · 录音中", "vRemoteDr 2ch · Recording")
@@ -870,13 +908,13 @@ private struct KeyMappingView: View {
                 HStack(spacing: 7) {
                     Image(systemName: "waveform.badge.mic")
                         .foregroundStyle(ConsoleTheme.green)
-                    Text(L10n.text("豆包语音触发键", "Doubao voice trigger"))
+                    Text(L10n.text("语音输入法与触发键", "Voice input method & trigger"))
                         .font(.system(size: 17, weight: .semibold))
                         .foregroundStyle(ConsoleTheme.text)
                 }
                 Text(L10n.text(
-                    "遥控器语音键与电脑键盘都使用这个按键控制豆包。这里必须与豆包输入法中的语音快捷键保持一致。",
-                    "The remote voice key and Mac keyboard both use this trigger. It must match Doubao Input Method's voice shortcut."
+                    "遥控器语音键与电脑键盘都使用这个按键控制\(model.voiceInputMethod.title)。这里必须与\(model.voiceInputMethod.title)中的语音快捷键保持一致。",
+                    "The remote voice key and Mac keyboard both use this trigger to control \(model.voiceInputMethod.title). It must match its voice shortcut."
                 ))
                     .font(.system(size: 12.5))
                     .foregroundStyle(ConsoleTheme.secondary)
@@ -884,6 +922,20 @@ private struct KeyMappingView: View {
             }
             Spacer(minLength: 10)
             VStack(alignment: .trailing, spacing: 7) {
+                Picker(
+                    L10n.text("语音输入法", "Voice input method"),
+                    selection: Binding(
+                        get: { model.voiceInputMethod },
+                        set: model.setVoiceInputMethod
+                    )
+                ) {
+                    ForEach(VoiceInputMethod.allCases) { method in
+                        Text(method.title).tag(method)
+                    }
+                }
+                .labelsHidden()
+                .frame(width: 158)
+                .disabled(model.remoteStreaming)
                 Picker(
                     L10n.text("触发键", "Trigger"),
                     selection: Binding(
@@ -1465,7 +1517,10 @@ private struct OutputChannelView: View {
             Text(L10n.text("混合输出", "Mixed Output"))
                 .font(.system(size: 20, weight: .semibold))
                 .foregroundStyle(ConsoleTheme.text)
-            Text(L10n.text("发送给豆包", "Sent to Doubao"))
+            Text(L10n.text(
+                "发送给\(model.voiceInputMethod.shortName)",
+                "Sent to \(model.voiceInputMethod.shortName)"
+            ))
                 .font(.system(size: 13))
                 .foregroundStyle(ConsoleTheme.secondary)
                 .padding(.top, 4)
@@ -1523,7 +1578,10 @@ private struct OutputChannelView: View {
             .padding(.top, 25)
             Text(outputError
                 ? L10n.text("等待音频链路恢复", "Waiting for audio route")
-                : L10n.text("豆包正在接收", "Doubao is receiving"))
+                : L10n.text(
+                    "\(model.voiceInputMethod.shortName)正在接收",
+                    "\(model.voiceInputMethod.shortName) is receiving"
+                ))
                 .font(.system(size: 11))
                 .foregroundStyle(outputError ? ConsoleTheme.red : ConsoleTheme.secondary)
                 .padding(.top, 15)

@@ -31,12 +31,12 @@ final class DoubaoAudioStateMonitor {
         }
     }
 
-    private static let targetBundleID = "com.bytedance.inputmethod.doubaoime"
     private static let targetDeviceName = "vRemoteDr 2ch"
 
     private var started = false
     private var processObjectID = AudioObjectID(kAudioObjectUnknown)
     private var processPID: pid_t?
+    private var boundBundleID: String?
     private var lastSnapshot: Snapshot?
 
     var onSnapshotChanged: ((Snapshot) -> Void)?
@@ -72,6 +72,13 @@ final class DoubaoAudioStateMonitor {
         refreshBindingAndPublish(force: true)
     }
 
+    /// Rebinds to the newly selected input method's process.
+    func targetDidChange() {
+        unbindProcessObject()
+        boundBundleID = nil
+        refreshBindingAndPublish(force: true)
+    }
+
     func stop() {
         guard started else { return }
         started = false
@@ -101,8 +108,13 @@ final class DoubaoAudioStateMonitor {
     }
 
     private func refreshBindingIfNeeded() {
+        let targetBundleID = VoiceInputMethod.current.bundleIdentifier
+        if boundBundleID != targetBundleID {
+            unbindProcessObject()
+            boundBundleID = targetBundleID
+        }
         let app = NSRunningApplication.runningApplications(
-            withBundleIdentifier: Self.targetBundleID
+            withBundleIdentifier: targetBundleID
         ).first { !$0.isTerminated }
 
         guard let app else {
@@ -188,7 +200,8 @@ final class DoubaoAudioStateMonitor {
            !snapshot.inputDeviceNames.contains(Self.targetDeviceName)
         {
             print(
-                "[DOUBAO-STATE] ⚠️ 豆包正在录音，但实际输入不是 " +
+                "[DOUBAO-STATE] ⚠️ \(VoiceInputMethod.current.shortName)" +
+                "正在录音，但实际输入不是 " +
                 Self.targetDeviceName
             )
         }

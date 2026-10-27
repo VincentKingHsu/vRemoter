@@ -6,6 +6,7 @@ enum AppStorage {
     static let macInputEnabledKey = "macInputEnabled"
     static let remoteInputEnabledKey = "remoteInputEnabled"
     static let inputTriggerKeyKey = "inputTriggerKey"
+    static let voiceInputMethodKey = "voiceInputMethod"
 
     static let logsDirectory: URL = {
         FileManager.default.homeDirectoryForCurrentUser

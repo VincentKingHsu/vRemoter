@@ -858,6 +858,12 @@ final class X6SessionCoordinator {
     }
 
     private func publish(_ status: String) {
-        onStateChanged?(status)
+        // Status copy is written for Doubao; name the selected input method.
+        let method = VoiceInputMethod.current
+        onStateChanged?(
+            status
+                .replacingOccurrences(of: "豆包输入法", with: method.title)
+                .replacingOccurrences(of: "豆包", with: method.shortName)
+        )
     }
 }
