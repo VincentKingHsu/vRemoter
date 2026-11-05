@@ -66,7 +66,9 @@ final class X6SessionCoordinator {
 
     private let doubaoState: any DoubaoAudioStateProviding
     private let setRemoteRouteActive: (Bool) -> Void
-    private let triggerTap: () -> Void
+    private let triggerTap: (VoiceTriggerIntent) -> Void
+    private let observesToolState: () -> Bool
+    private let toolName: () -> String
     private let now: () -> Date
 
     private var phase: Phase = .closed
@@ -89,18 +91,30 @@ final class X6SessionCoordinator {
         ((VoiceRemoteID, Bool) -> RemoteMicrophoneOpenResult)?
     var onMicrophoneCloseRequested: (() -> Void)?
     var onStateChanged: ((String) -> Void)?
+    /// Called whenever a session returns to `closed`.
+    var onSessionFinished: (() -> Void)?
 
     init(
         doubaoState: any DoubaoAudioStateProviding,
         setRemoteRouteActive: @escaping (Bool) -> Void = {
             AudioPipe.shared.setRemoteActive($0)
         },
-        triggerTap: @escaping () -> Void = { Key.triggerTap() },
+        triggerTap: @escaping (VoiceTriggerIntent) -> Void = { _ in
+            Key.triggerTap()
+        },
+        observesToolState: @escaping () -> Bool = {
+            VoiceInputTool.selected.observesRecordingState
+        },
+        toolName: @escaping () -> String = {
+            VoiceInputTool.selected.shortName
+        },
         now: @escaping () -> Date = Date.init
     ) {
         self.doubaoState = doubaoState
         self.setRemoteRouteActive = setRemoteRouteActive
         self.triggerTap = triggerTap
+        self.observesToolState = observesToolState
+        self.toolName = toolName
         self.now = now
     }
 
@@ -147,7 +161,8 @@ final class X6SessionCoordinator {
         }
 
         if supportsPhysicalHoldGesture, reason == 0x03 {
-            let recognitionWasOpen = phase == .open || snapshot.isRecording
+            let recognitionWasOpen = phase == .open
+                || observedRecording(snapshot)
             if physicalVoiceGestures[remote] == nil {
                 physicalVoiceGestures[remote] = PhysicalVoiceGesture(
                     beganAt: now(),
@@ -189,7 +204,7 @@ final class X6SessionCoordinator {
 
         switch phase {
         case .opening, .open:
-            publish("豆包录音中 · 遥控器已接入")
+            publish("\(toolName())录音中 · 遥控器已接入")
 
         case .closed:
             // Chromecast reserves reason 0x03 for a physical voice press, so
@@ -283,7 +298,7 @@ final class X6SessionCoordinator {
                 bypassDebounce: true,
                 attempt: 1
             )
-            publish("豆包录音中 · 遥控器持续收音")
+            publish("\(toolName())录音中 · 遥控器持续收音")
             return
         }
 
@@ -297,7 +312,7 @@ final class X6SessionCoordinator {
         // it immediately before its HID toggle-off edge. Only the proven
         // Chromecast physical-tap path above performs an immediate recovery.
         if phase == .open || phase == .opening {
-            publish("豆包仍开启 · 遥控器音频已停止")
+            publish("\(toolName())仍开启 · 遥控器音频已停止")
         } else if streamingRemotes.isEmpty {
             scheduleRouteClose(after: 0.08)
         }
@@ -360,7 +375,7 @@ final class X6SessionCoordinator {
         let shouldOpen: Bool
         switch phase {
         case .closed:
-            shouldOpen = !snapshot.isRecording
+            shouldOpen = !observedRecording(snapshot)
         case .closing:
             // A second deliberate physical trigger reverses the user's last
             // intent even if CoreAudio has not published inactive yet.
@@ -414,6 +429,7 @@ final class X6SessionCoordinator {
         physicalVoiceGestures.removeAll()
         closeRouteAndTransports()
         publish("已手动关闭")
+        onSessionFinished?()
     }
 
     func stop() {
@@ -426,6 +442,9 @@ final class X6SessionCoordinator {
     private func handleDoubaoSnapshot(
         _ snapshot: DoubaoAudioStateMonitor.Snapshot
     ) {
+        // Tools without an observable recording state follow the gestures
+        // only; Doubao snapshots must not drive their sessions.
+        guard observesToolState() else { return }
         switch snapshot.state {
         case .active:
             switch phase {
@@ -444,11 +463,11 @@ final class X6SessionCoordinator {
                         attempt: 1
                     )
                 }
-                publish("豆包录音中 · \(snapshot.deviceSummary)")
+                publish("\(toolName())录音中 · \(snapshot.deviceSummary)")
 
             case .open:
                 activateRemoteRoute()
-                publish("豆包录音中 · \(snapshot.deviceSummary)")
+                publish("\(toolName())录音中 · \(snapshot.deviceSummary)")
 
             case .closing:
                 // CoreAudio can remain active briefly after the trigger has
@@ -474,13 +493,13 @@ final class X6SessionCoordinator {
                     closeRouteAndTransports()
                 }
             }
-            publish("豆包已就绪")
+            publish("\(toolName())已就绪")
 
         case .unavailable:
             if phase != .opening {
                 finalizeClosed(reason: "Doubao unavailable")
             }
-            publish("等待豆包输入法")
+            publish("等待\(toolName())")
         }
     }
 
@@ -504,7 +523,7 @@ final class X6SessionCoordinator {
                 attempt: 1
             )
         }
-        publish("豆包录音中 · \(snapshot.deviceSummary)")
+        publish("\(toolName())录音中 · \(snapshot.deviceSummary)")
     }
 
     // MARK: - State transitions
@@ -516,8 +535,12 @@ final class X6SessionCoordinator {
         owner = .keyboard
         sessionRemote = nil
         activateRemoteRoute()
+        guard observesToolState() else {
+            confirmOpenWithoutObservation()
+            return
+        }
         scheduleStartVerification(for: generation)
-        publish("豆包正在启动 · 等待遥控器")
+        publish("\(toolName())正在启动 · 等待遥控器")
     }
 
     private func beginOpening(
@@ -533,7 +556,7 @@ final class X6SessionCoordinator {
         sessionRemote = remote
         activateRemoteRoute()
         if sendTrigger {
-            triggerTap()
+            triggerTap(.open)
         }
         if requestTransportImmediately {
             requestRemoteTransportOpen(
@@ -542,12 +565,41 @@ final class X6SessionCoordinator {
                 attempt: 1
             )
         }
+        guard observesToolState() else {
+            confirmOpenWithoutObservation()
+            return
+        }
         scheduleStartVerification(for: generation)
         publish(
             owner == .keyboard
-                ? "豆包正在启动 · 遥控器已预热"
-                : "遥控器已启动 · 正在打开豆包"
+                ? "\(toolName())正在启动 · 遥控器已预热"
+                : "遥控器已启动 · 正在打开\(toolName())"
         )
+    }
+
+    /// Opening completes immediately when the tool's recording state cannot
+    /// be observed: the trigger has been delivered and the gesture is the
+    /// only source of truth.
+    private func confirmOpenWithoutObservation() {
+        phase = .open
+        activateRemoteRoute()
+        if let remote = sessionRemote,
+           !streamingRemotes.contains(remote),
+           openRequestedRemote != remote
+        {
+            requestRemoteTransportOpen(
+                remote,
+                bypassDebounce: false,
+                attempt: 1
+            )
+        }
+        publish("\(toolName())录音中 · 按手势控制")
+    }
+
+    private func observedRecording(
+        _ snapshot: DoubaoAudioStateMonitor.Snapshot
+    ) -> Bool {
+        observesToolState() && snapshot.isRecording
     }
 
     private func closeRecognitionFromRemote(reason: String) {
@@ -575,11 +627,11 @@ final class X6SessionCoordinator {
         owner = .none
         openRequestedRemote = nil
         if sendTrigger {
-            triggerTap()
+            triggerTap(.close)
         }
         scheduleRouteClose(after: 0.10)
         scheduleCloseVerification(for: generation)
-        publish("遥控器已结束 · 正在关闭豆包")
+        publish("遥控器已结束 · 正在关闭\(toolName())")
         print(
             "[VOICE-SESSION] begin closing reason=\(reason) " +
             "trigger=\(sendTrigger ? "synthetic" : "physical")"
@@ -595,6 +647,7 @@ final class X6SessionCoordinator {
         physicalVoiceGestures.removeAll()
         closeRouteAndTransports()
         print("[VOICE-SESSION] closed reason=\(reason)")
+        onSessionFinished?()
     }
 
     // MARK: - Remote transport requests
@@ -746,7 +799,7 @@ final class X6SessionCoordinator {
                 return
             }
             self.finalizeClosed(reason: "opening timeout")
-            self.publish("豆包未启动 · 遥控器自动关闭")
+            self.publish("\(self.toolName())未启动 · 遥控器自动关闭")
         }
         startVerificationWorkItem = work
         DispatchQueue.main.asyncAfter(deadline: .now() + 1.0, execute: work)
@@ -760,6 +813,11 @@ final class X6SessionCoordinator {
                   self.phase == .closing
             else { return }
             self.closeVerificationWorkItem = nil
+            guard self.observesToolState() else {
+                self.finalizeClosed(reason: "close without observation")
+                self.publish("\(self.toolName())已就绪")
+                return
+            }
             let snapshot = self.doubaoState.snapshotNow()
             if snapshot.isRecording {
                 // The requested close did not become observable. Follow the
@@ -775,13 +833,13 @@ final class X6SessionCoordinator {
                         attempt: 1
                     )
                 }
-                self.publish("豆包仍在录音 · 请再次关闭")
+                self.publish("\(self.toolName())仍在录音 · 请再次关闭")
                 print(
                     "[VOICE-SESSION] close not observed; restored open state"
                 )
             } else {
                 self.finalizeClosed(reason: "close verification")
-                self.publish("豆包已就绪")
+                self.publish("\(self.toolName())已就绪")
             }
         }
         closeVerificationWorkItem = work

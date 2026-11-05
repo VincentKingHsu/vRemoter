@@ -255,6 +255,7 @@ private final class ConsoleViewModel: ObservableObject {
     @Published var x6Connected = false
     @Published var chromecastConnected = false
     @Published var inputTriggerKey = AppStorage.inputTriggerKey
+    @Published var voiceInputTool = AppStorage.voiceInputTool
     @Published var activeModal: ConsoleModal?
     @Published var showX6MicHint = !UserDefaults.standard.bool(
         forKey: "vRemoter.hasCompletedX6MicTest"
@@ -267,11 +268,22 @@ private final class ConsoleViewModel: ObservableObject {
     var onMacInputEnabledChanged: ((Bool) -> Void)?
     var onRemoteInputEnabledChanged: ((Bool) -> Void)?
     var onInputTriggerChanged: (() -> Void)?
+    var onVoiceInputToolChanged: (() -> Void)?
     var onRemoteMappingEnabledChanged: ((SupportedRemoteID, Bool) -> Void)?
 
+    var toolObservesRecording: Bool { voiceInputTool.observesRecordingState }
     var doubaoUsesVRemote: Bool { doubaoInput.contains("vRemoteDr 2ch") }
     var macSolo: Bool { macInputEnabled && !remoteInputEnabled }
     var remoteSolo: Bool { remoteInputEnabled && !macInputEnabled }
+
+    func setVoiceInputTool(_ tool: VoiceInputTool) {
+        guard voiceInputTool != tool else { return }
+        voiceInputTool = tool
+        AppStorage.voiceInputTool = tool
+        inputTriggerKey = tool.defaultTrigger
+        AppStorage.inputTriggerKey = tool.defaultTrigger
+        onVoiceInputToolChanged?()
+    }
 
     func setInputTrigger(_ trigger: InputTriggerKey) {
         guard inputTriggerKey != trigger else { return }
@@ -435,6 +447,7 @@ final class DebugWindowController: NSWindowController, NSWindowDelegate {
     var onMacInputEnabledChanged: ((Bool) -> Void)?
     var onRemoteInputEnabledChanged: ((Bool) -> Void)?
     var onInputTriggerChanged: (() -> Void)?
+    var onVoiceInputToolChanged: (() -> Void)?
     var onRemoteMappingEnabledChanged: ((SupportedRemoteID, Bool) -> Void)?
 
     private let model = ConsoleViewModel()
@@ -476,6 +489,9 @@ final class DebugWindowController: NSWindowController, NSWindowDelegate {
         }
         model.onInputTriggerChanged = { [weak self] in
             self?.onInputTriggerChanged?()
+        }
+        model.onVoiceInputToolChanged = { [weak self] in
+            self?.onVoiceInputToolChanged?()
         }
         model.onRemoteMappingEnabledChanged = { [weak self] remote, enabled in
             self?.onRemoteMappingEnabledChanged?(remote, enabled)
@@ -735,14 +751,24 @@ private struct StudioMixerView: View {
     private var statusPanel: some View {
         VStack(spacing: 0) {
             StatusRow(
-                title: L10n.text("豆包输入设备", "Doubao input"),
-                value: model.doubaoIsRecording
+                title: L10n.text(
+                    "\(model.voiceInputTool.shortName)输入设备",
+                    "\(model.voiceInputTool.shortName) input"
+                ),
+                value: !model.toolObservesRecording
+                    ? L10n.text(
+                        "请在\(model.voiceInputTool.shortName)中选择 vRemoteDr 2ch",
+                        "Select vRemoteDr 2ch in \(model.voiceInputTool.shortName)"
+                    )
+                    : model.doubaoIsRecording
                     ? (model.doubaoUsesVRemote
                         ? L10n.text("vRemoteDr 2ch · 录音中", "vRemoteDr 2ch · Recording")
                         : model.doubaoInput)
                     : L10n.text("当前未录音", "Not recording"),
-                tone: model.doubaoIsRecording && !model.doubaoUsesVRemote ? .error : .good,
-                action: model.doubaoIsRecording && !model.doubaoUsesVRemote
+                tone: !model.toolObservesRecording
+                    ? .warning
+                    : (model.doubaoIsRecording && !model.doubaoUsesVRemote ? .error : .good),
+                action: model.toolObservesRecording && model.doubaoIsRecording && !model.doubaoUsesVRemote
                     ? L10n.text("设置方法", "Fix settings")
                     : nil,
                 onAction: { model.activeModal = .permission(.doubaoInput) }
@@ -870,20 +896,50 @@ private struct KeyMappingView: View {
                 HStack(spacing: 7) {
                     Image(systemName: "waveform.badge.mic")
                         .foregroundStyle(ConsoleTheme.green)
-                    Text(L10n.text("豆包语音触发键", "Doubao voice trigger"))
+                    Text(L10n.text("语音工具与触发键", "Voice tool & trigger"))
                         .font(.system(size: 17, weight: .semibold))
                         .foregroundStyle(ConsoleTheme.text)
                 }
                 Text(L10n.text(
-                    "遥控器语音键与电脑键盘都使用这个按键控制豆包。这里必须与豆包输入法中的语音快捷键保持一致。",
-                    "The remote voice key and Mac keyboard both use this trigger. It must match Doubao Input Method's voice shortcut."
+                    "遥控器语音键与电脑键盘都使用这个按键控制\(model.voiceInputTool.shortName)。这里必须与\(model.voiceInputTool.shortName)中的语音快捷键保持一致。",
+                    "The remote voice key and Mac keyboard both use this trigger. It must match \(model.voiceInputTool.shortName)'s voice shortcut."
                 ))
                     .font(.system(size: 12.5))
                     .foregroundStyle(ConsoleTheme.secondary)
                     .fixedSize(horizontal: false, vertical: true)
+                if !model.voiceInputTool.isVerified {
+                    Label(
+                        L10n.text("未验证 · 请先实测", "Unverified · test first"),
+                        systemImage: "exclamationmark.triangle.fill"
+                    )
+                    .font(.system(size: 10.5, weight: .medium))
+                    .foregroundStyle(ConsoleTheme.amber)
+                }
+                if VoiceInputSourceSession.isAvailable(model.voiceInputTool) == false {
+                    Label(
+                        L10n.text("未在系统中启用该输入法", "Input method not enabled in macOS"),
+                        systemImage: "exclamationmark.triangle.fill"
+                    )
+                    .font(.system(size: 10.5, weight: .medium))
+                    .foregroundStyle(ConsoleTheme.amber)
+                }
             }
             Spacer(minLength: 10)
             VStack(alignment: .trailing, spacing: 7) {
+                Picker(
+                    L10n.text("语音工具", "Voice tool"),
+                    selection: Binding(
+                        get: { model.voiceInputTool },
+                        set: model.setVoiceInputTool
+                    )
+                ) {
+                    ForEach(VoiceInputTool.allCases) { tool in
+                        Text(tool.title).tag(tool)
+                    }
+                }
+                .labelsHidden()
+                .frame(width: 158)
+                .disabled(model.remoteStreaming)
                 Picker(
                     L10n.text("触发键", "Trigger"),
                     selection: Binding(
@@ -898,7 +954,8 @@ private struct KeyMappingView: View {
                 .labelsHidden()
                 .frame(width: 158)
                 .disabled(model.remoteStreaming)
-                if model.inputTriggerKey == .function {
+                if model.inputTriggerKey == .function,
+                   model.voiceInputTool.defaultTrigger != .function {
                     Label(
                         L10n.text("Fn 需在本机测试", "Test Fn on this Mac"),
                         systemImage: "exclamationmark.triangle.fill"
@@ -1005,7 +1062,8 @@ private struct KeyMappingView: View {
                             MappingRow(
                                 remote: selectedDevice,
                                 button: button,
-                                enabled: mappings.isEnabled(selectedDevice)
+                                enabled: mappings.isEnabled(selectedDevice),
+                                voiceTool: model.voiceInputTool
                             )
                         }
                     }
@@ -1085,6 +1143,7 @@ private struct MappingRow: View {
     let remote: SupportedRemoteID
     let button: RemoteButtonDefinition
     let enabled: Bool
+    let voiceTool: VoiceInputTool
 
     var body: some View {
         HStack(spacing: 8) {
@@ -1101,7 +1160,7 @@ private struct MappingRow: View {
                     .font(.system(size: 11))
                     .foregroundStyle(ConsoleTheme.tertiary)
             } else if button.voiceControlled {
-                Text(RemoteMappingTarget.doubaoVoice.title)
+                Text(voiceTool.voiceActionTitle)
                     .font(.system(size: 11))
                     .foregroundStyle(ConsoleTheme.green)
             } else {
@@ -1465,7 +1524,10 @@ private struct OutputChannelView: View {
             Text(L10n.text("混合输出", "Mixed Output"))
                 .font(.system(size: 20, weight: .semibold))
                 .foregroundStyle(ConsoleTheme.text)
-            Text(L10n.text("发送给豆包", "Sent to Doubao"))
+            Text(L10n.text(
+                "发送给\(model.voiceInputTool.shortName)",
+                "Sent to \(model.voiceInputTool.shortName)"
+            ))
                 .font(.system(size: 13))
                 .foregroundStyle(ConsoleTheme.secondary)
                 .padding(.top, 4)
@@ -1523,7 +1585,10 @@ private struct OutputChannelView: View {
             .padding(.top, 25)
             Text(outputError
                 ? L10n.text("等待音频链路恢复", "Waiting for audio route")
-                : L10n.text("豆包正在接收", "Doubao is receiving"))
+                : L10n.text(
+                    "\(model.voiceInputTool.shortName)正在接收",
+                    "\(model.voiceInputTool.shortName) is receiving"
+                ))
                 .font(.system(size: 11))
                 .foregroundStyle(outputError ? ConsoleTheme.red : ConsoleTheme.secondary)
                 .padding(.top, 15)
