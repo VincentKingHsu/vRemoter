@@ -170,6 +170,9 @@ final class BLEBridge: NSObject {
     }
 
     func closeMicrophone(force: Bool = false) {
+        guard commandChar != nil, protocolHandler.capabilities != nil else {
+            return
+        }
         // `isStreaming` is driven by the remote's AUDIO_START/AUDIO_STOP
         // notifications.  A lost stop packet must not make the close action
         // a no-op: the remote can still be sending frames and keep-alives.
@@ -372,10 +375,6 @@ final class BLEBridge: NSObject {
         isStreaming = false
         protocolHandler.endAudioStream()
         stopKeepAliveTimer()
-        if wasStreaming {
-            notifyStreaming(false)
-            onAudioStopped?(reason)
-        }
         levelSumSq = 0
         levelCount = 0
         levelPeak = 0
@@ -386,20 +385,29 @@ final class BLEBridge: NSObject {
             print("[WAV] closed \(w.filename)")
             wavRecorder = nil
         }
-        let streamRMS = streamSampleCount > 0
-            ? sqrt(Double(streamSumSquares) / Double(streamSampleCount))
-            : 0
-        let streamDB = streamRMS > 0
-            ? 20.0 * log10(streamRMS / 32768.0)
-            : -120
-        print(
-            "[\(logTag)] AUDIO_SUMMARY streamID=\(streamID) " +
-            "frames=\(streamFrameCount) samples=\(streamSampleCount) " +
-            "peak=\(streamPeak) rms=\(Int(streamRMS.rounded())) " +
-            "db=\(Int(streamDB.rounded())) " +
-            "clipped=\(streamClippedSampleCount) syncs=\(streamAudioSyncCount)"
-        )
-        print("[\(logTag)] AUDIO_STOP reason=0x\(String(reason, radix: 16))")
+        if wasStreaming {
+            notifyStreaming(false)
+            onAudioStopped?(reason)
+            let streamRMS = streamSampleCount > 0
+                ? sqrt(Double(streamSumSquares) / Double(streamSampleCount))
+                : 0
+            let streamDB = streamRMS > 0
+                ? 20.0 * log10(streamRMS / 32768.0)
+                : -120
+            print(
+                "[\(logTag)] AUDIO_SUMMARY streamID=\(streamID) " +
+                "frames=\(streamFrameCount) samples=\(streamSampleCount) " +
+                "peak=\(streamPeak) rms=\(Int(streamRMS.rounded())) " +
+                "db=\(Int(streamDB.rounded())) " +
+                "clipped=\(streamClippedSampleCount) syncs=\(streamAudioSyncCount)"
+            )
+            print("[\(logTag)] AUDIO_STOP reason=0x\(String(reason, radix: 16))")
+            streamFrameCount = 0
+            streamSampleCount = 0
+            streamPeak = 0
+            streamSumSquares = 0
+            streamClippedSampleCount = 0
+        }
     }
 }
 
