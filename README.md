@@ -2,7 +2,7 @@
 
 > 本仓库保存 vRemoter 的源码、设计源稿、构建脚本与测试。普通用户请通过 `vincentstudio.org` 系列域名访问官网、下载与更新服务。
 
-[官方网站](https://vremoter.vincentstudio.org/) · [下载最新版](https://updates.vincentstudio.org/vremoter/) · [v1.1.1 Release](https://github.com/VincentKingHsu/vRemoter/releases/tag/v1.1.1)
+[官方网站](https://vremoter.vincentstudio.org/) · [下载最新版](https://updates.vincentstudio.org/vremoter/) · [v1.2.3 Release](https://github.com/VincentKingHsu/vRemoter/releases/tag/v1.2.3)
 
 ## 产品定位
 
@@ -15,7 +15,16 @@ vRemoter 把蓝牙语音遥控器变成 macOS 上的 Vibe Coding 控制器：遥
 
 Chromecast Remote 已实现语音键双模式：短按第一次打开、第二次关闭；长按时持续录音，松手自动关闭。APP 还提供按型号保存的按键映射，可把方向、确认、返回、Home、YouTube、Netflix、信源、音量等按键改为常用 macOS 操作。
 
-当前版本：`1.1.1`
+当前版本：`1.2.3`
+
+## 1.2.3 新功能
+
+- 新增系统级「锁屏」「睡眠」「切换应用」映射动作，遥控器电源键等均可指定。
+- 切换应用采用定时器会话：单击切到上一个应用；会话中连按或按方向键逐个选择，停手 1 秒自动落地。X6 与 Chromecast 同一套交互。
+- 双路麦克风的「静音 / 独奏」按钮合并为拨动开关，混音逻辑不变。
+- 按键映射的自定义菜单显示「自定义（当前：…）」。
+- 豆包输入法设置向导新增第 5 步引导图。
+- 主界面副标题显示当前版本号。
 
 ## 1.1.1 修复
 
@@ -34,9 +43,9 @@ Chromecast Remote 已实现语音键双模式：短按第一次打开、第二�
 - 启用映射后拦截设备原始动作，再由 vRemoter 发送所选键盘、媒体键或自定义快捷键；关闭映射即可恢复系统原行为。
 - 主控制台去掉 X6 专属措辞，X6 与 Chromecast Remote 可以同时连接。
 
-![vRemoter 1.1.1 音频控制台](docs/assets/screenshots/vremoter-audio-1.1.1.png)
+![vRemoter 1.2.3 音频控制台](docs/assets/screenshots/vremoter-audio-1.2.3.png)
 
-![vRemoter 1.1.1 Chromecast 按键映射](docs/assets/screenshots/vremoter-mapping-chromecast-1.1.1.png)
+![vRemoter 1.2.3 Chromecast 按键映射](docs/assets/screenshots/vremoter-mapping-chromecast-1.2.3.png)
 
 完整历史见 [CHANGELOG.md](CHANGELOG.md)。
 

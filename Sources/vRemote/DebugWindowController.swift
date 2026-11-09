@@ -45,7 +45,8 @@ enum PermissionKind: String, Identifiable, CaseIterable {
                 "permission-app-management",
                 "doubaoinput0",
                 "doubaoinput1",
-                "doubaoinput2"
+                "doubaoinput2",
+                "doubaoinput3"
             ]
         case .microphone: ["permission-microphone", "permission-microphone"]
         case .accessibility: ["permission-accessibility", "permission-accessibility"]
@@ -73,6 +74,10 @@ enum PermissionKind: String, Identifiable, CaseIterable {
                 L10n.text(
                     "选择“自动检测”或“vRemoteDr 2ch”。如果自动检测没有声音，请直接选择 vRemoteDr 2ch。",
                     "Choose Automatic Detection or vRemoteDr 2ch. If automatic detection is silent, select vRemoteDr 2ch directly."
+                ),
+                L10n.text(
+                    "请将豆包输入法做如图设置。如要更改为其他按键，请在 vRemoter 程序里也做对应修改。",
+                    "Set up the Doubao input method exactly as shown. If you change the trigger key, update it inside vRemoter to match."
                 )
             ]
         case .microphone:
@@ -270,8 +275,6 @@ private final class ConsoleViewModel: ObservableObject {
     var onRemoteMappingEnabledChanged: ((SupportedRemoteID, Bool) -> Void)?
 
     var doubaoUsesVRemote: Bool { doubaoInput.contains("vRemoteDr 2ch") }
-    var macSolo: Bool { macInputEnabled && !remoteInputEnabled }
-    var remoteSolo: Bool { remoteInputEnabled && !macInputEnabled }
 
     func setInputTrigger(_ trigger: InputTriggerKey) {
         guard inputTriggerKey != trigger else { return }
@@ -285,32 +288,14 @@ private final class ConsoleViewModel: ObservableObject {
         onRemoteMappingEnabledChanged?(remote, enabled)
     }
 
-    func toggleMacMute() {
-        let next = !macInputEnabled
-        macInputEnabled = next
-        onMacInputEnabledChanged?(next)
+    func setMacInputEnabled(_ enabled: Bool) {
+        macInputEnabled = enabled
+        onMacInputEnabledChanged?(enabled)
     }
 
-    func toggleRemoteMute() {
-        let next = !remoteInputEnabled
-        remoteInputEnabled = next
-        onRemoteInputEnabledChanged?(next)
-    }
-
-    func toggleMacSolo() {
-        let shouldSolo = !macSolo
-        macInputEnabled = true
-        remoteInputEnabled = !shouldSolo
-        onMacInputEnabledChanged?(true)
-        onRemoteInputEnabledChanged?(!shouldSolo)
-    }
-
-    func toggleRemoteSolo() {
-        let shouldSolo = !remoteSolo
-        remoteInputEnabled = true
-        macInputEnabled = !shouldSolo
-        onRemoteInputEnabledChanged?(true)
-        onMacInputEnabledChanged?(!shouldSolo)
+    func setRemoteInputEnabled(_ enabled: Bool) {
+        remoteInputEnabled = enabled
+        onRemoteInputEnabledChanged?(enabled)
     }
 
     func refreshPermissions() {
@@ -622,6 +607,18 @@ private struct StudioMixerView: View {
         }
     }
 
+    /// 主界面副标题：当前版本号 + 渠道后缀（如「1.2.3 Beta」）。
+    /// Beta 后缀来自 Info.plist 的 VRemoterBetaSuffix；发布正式版时置空即可。
+    private var versionLabel: String {
+        let version = Bundle.main.object(
+            forInfoDictionaryKey: "CFBundleShortVersionString"
+        ) as? String ?? "dev"
+        let suffix = Bundle.main.object(
+            forInfoDictionaryKey: "VRemoterBetaSuffix"
+        ) as? String ?? ""
+        return version + suffix
+    }
+
     private var header: some View {
         HStack(spacing: 10) {
             Image(nsImage: LogoAsset.image)
@@ -632,7 +629,7 @@ private struct StudioMixerView: View {
                 Text("vRemoter")
                     .font(.system(size: 24, weight: .semibold))
                     .foregroundStyle(ConsoleTheme.text)
-                Text(L10n.text("双麦语音输入", "Dual microphone input"))
+                Text(versionLabel)
                     .font(.system(size: 11, weight: .medium))
                     .foregroundStyle(ConsoleTheme.secondary)
             }
@@ -705,9 +702,7 @@ private struct StudioMixerView: View {
                 subtitle: L10n.text("电脑内置", "Built in"),
                 db: model.macLevelDB,
                 enabled: model.macInputEnabled,
-                solo: model.macSolo,
-                onMute: model.toggleMacMute,
-                onSolo: model.toggleMacSolo
+                onToggle: model.setMacInputEnabled
             )
             .frame(width: 225)
             Divider().overlay(ConsoleTheme.lineSoft)
@@ -716,12 +711,10 @@ private struct StudioMixerView: View {
                 subtitle: L10n.text("蓝牙语音遥控器", "Bluetooth Voice Remote"),
                 db: model.remoteLevelDB,
                 enabled: model.remoteInputEnabled,
-                solo: model.remoteSolo,
                 purchaseLink: !commerce.config.availableStores.isEmpty,
                 showTestHint: model.showX6MicHint && model.hidConnected && model.bleConnected,
                 onPurchase: model.showPurchase,
-                onMute: model.toggleRemoteMute,
-                onSolo: model.toggleRemoteSolo
+                onToggle: model.setRemoteInputEnabled
             )
             .frame(width: 224)
             Divider().overlay(ConsoleTheme.lineSoft)
@@ -1120,10 +1113,9 @@ private struct MappingRow: View {
                         )
                     ) {
                         ForEach(RemoteMappingTarget.allCases.filter { $0 != .doubaoVoice }) { target in
-                            Text(
-                                target == .custom
-                                    ? mappings.targetTitle(for: button, remote: remote)
-                                    : target.title
+                            Text(target == .custom
+                                ? customMenuTitle
+                                : target.title
                             ).tag(target)
                         }
                     }
@@ -1159,6 +1151,19 @@ private struct MappingRow: View {
                 }
             )
         }
+    }
+
+    /// 「自定义」菜单项标题：已录制显示「自定义（当前：⇧⌘K）」，未录制显示「自定义…」。
+    /// 不改动 RemoteMappingStore.targetTitle()——它被 HID 桥用于状态上报。
+    private var customMenuTitle: String {
+        let current = mappings.targetTitle(for: button, remote: remote)
+        if mappings.customShortcut(for: button, remote: remote) != nil {
+            return L10n.text(
+                "自定义（当前：\(current)）",
+                "Custom (Current: \(current))"
+            )
+        }
+        return L10n.text("自定义…", "Custom…")
     }
 }
 
@@ -1340,12 +1345,10 @@ private struct InputChannelView: View {
     let subtitle: String
     let db: Double
     let enabled: Bool
-    let solo: Bool
     var purchaseLink = false
     var showTestHint = false
     var onPurchase: (() -> Void)?
-    let onMute: () -> Void
-    let onSolo: () -> Void
+    let onToggle: (Bool) -> Void
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -1359,15 +1362,13 @@ private struct InputChannelView: View {
                 .padding(.top, 4)
             HStack(spacing: 6) {
                 Circle()
-                    .fill(enabled ? (solo ? ConsoleTheme.amber : ConsoleTheme.green) : ConsoleTheme.tertiary)
+                    .fill(enabled ? ConsoleTheme.green : ConsoleTheme.tertiary)
                     .frame(width: 10, height: 10)
                 Text(enabled
-                    ? (solo
-                        ? L10n.text("正在独奏", "Solo")
-                        : L10n.text("有声音", "Active"))
+                    ? L10n.text("有声音", "Active")
                     : L10n.text("不参与混合", "Muted"))
                     .font(.system(size: 11, weight: .semibold))
-                    .foregroundStyle(enabled ? (solo ? ConsoleTheme.amber : ConsoleTheme.secondary) : ConsoleTheme.tertiary)
+                    .foregroundStyle(enabled ? ConsoleTheme.secondary : ConsoleTheme.tertiary)
                 Spacer()
                 Text(dbText)
                     .font(.system(size: 12, weight: .medium, design: .monospaced))
@@ -1406,26 +1407,27 @@ private struct InputChannelView: View {
             }
             .font(.system(size: 11))
             .foregroundStyle(ConsoleTheme.tertiary)
-            .frame(width: 141)
+            // 不再固定 141pt：电平条 10 段实际宽 176pt，写死宽度导致“高”不贴电平条右缘。
             .padding(.top, 6)
-            HStack(spacing: 8) {
-                Button(L10n.text("静音", "Mute"), action: onMute)
-                    .buttonStyle(ConsoleButtonStyle(
-                        tone: enabled ? .neutral : .error,
-                        consoleSized: true
-                    ))
-                Button(L10n.text("独奏", "Solo"), action: onSolo)
-                    .buttonStyle(ConsoleButtonStyle(
-                        tone: solo ? .warning : .neutral,
-                        consoleSized: true
-                    ))
+            HStack(spacing: 9) {
+                Toggle(String(), isOn: Binding(
+                    get: { enabled },
+                    set: { onToggle($0) }
+                ))
+                .toggleStyle(.switch)
+                .controlSize(.small)
+                .labelsHidden()
+                Text(enabled
+                    ? L10n.text("打开", "On")
+                    : L10n.text("关闭", "Off"))
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundStyle(enabled ? ConsoleTheme.text : ConsoleTheme.tertiary)
+                Spacer()
             }
             .padding(.top, 31)
             HStack(spacing: 4) {
                 Text(enabled
-                    ? (solo
-                        ? L10n.text("仅此路参与", "Solo input")
-                        : L10n.text("参与混合", "In mix"))
+                    ? L10n.text("参与混合", "In mix")
                     : L10n.text("不参与混合", "Not in mix"))
                 Spacer()
                 if purchaseLink {
@@ -1443,11 +1445,6 @@ private struct InputChannelView: View {
         .padding(.horizontal, 23)
         .padding(.top, 23)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-        .background(solo ? ConsoleTheme.amber.opacity(0.06) : Color.clear)
-        .overlay(
-            RoundedRectangle(cornerRadius: 12)
-                .stroke(solo ? ConsoleTheme.amber : Color.clear, lineWidth: 1)
-        )
         .opacity(enabled ? 1 : 0.58)
     }
 

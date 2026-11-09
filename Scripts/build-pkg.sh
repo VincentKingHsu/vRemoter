@@ -2,6 +2,8 @@
 set -euo pipefail
 
 SCRIPT_DIR="${0:A:h}"
+# 2026-11-09: 脚本已移入 Scripts/，回退一层到项目根
+SCRIPT_DIR="${SCRIPT_DIR:h}"
 PLIST="$SCRIPT_DIR/Packaging/Info.plist"
 VERSION=$(/usr/libexec/PlistBuddy -c "Print :CFBundleShortVersionString" "$PLIST")
 PACKAGE_VERSION=$(print -r -- "$VERSION" | sed -E 's/[^0-9.]+/./g; s/\.+/./g; s/^\.//; s/\.$//')
@@ -9,7 +11,7 @@ PAYLOAD_ROOT="$SCRIPT_DIR/dist/pkg-root"
 UNSIGNED_PKG="$SCRIPT_DIR/dist/vRemoter-$VERSION-unsigned.pkg"
 FINAL_PKG="$SCRIPT_DIR/dist/vRemoter-$VERSION.pkg"
 
-"$SCRIPT_DIR/package-app.sh"
+"$SCRIPT_DIR/Scripts/package-app.sh"
 "$SCRIPT_DIR/Driver/build-driver.sh"
 
 rm -rf "$PAYLOAD_ROOT" "$UNSIGNED_PKG" "$FINAL_PKG"

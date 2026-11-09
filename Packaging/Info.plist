@@ -19,9 +19,11 @@
     <key>CFBundlePackageType</key>
     <string>APPL</string>
     <key>CFBundleShortVersionString</key>
-    <string>1.1.1</string>
+    <string>1.2.3</string>
     <key>CFBundleVersion</key>
-    <string>111</string>
+    <string>123</string>
+    <key>VRemoterBetaSuffix</key>
+    <string></string>
     <key>LSMinimumSystemVersion</key>
     <string>12.0</string>
     <key>LSUIElement</key>

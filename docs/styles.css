@@ -154,6 +154,7 @@ figcaption { margin-top: 11px; color: var(--secondary); font-size: 11px; }
 .remote-card .card-tagline { font-size: 12px; }
 .boundary-note { max-width: 920px; margin: 20px 0 0; font-size: 12px; }
 .tech-detail { max-width: 920px; margin: 6px 0 0; color: var(--muted); font-size: 11px; opacity: .72; }
+.actions-shot img { max-height: 620px; }
 
 .voice-band { background: #08090a; }
 .voice-layout { padding-block: 108px; display: grid; grid-template-columns: .86fr 1.14fr; gap: 72px; align-items: start; }

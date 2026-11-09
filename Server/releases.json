@@ -1,5 +1,32 @@
 [
   {
+    "id": 1001230,
+    "tag_name": "v1.2.3",
+    "name": "vRemoter 1.2.3",
+    "body": "- 新增系统级「锁屏」「睡眠」「切换应用」映射动作，遥控器电源键等均可指定\n- 切换应用与真键盘 ⌘Tab 手感一致：单击切上一个，连按或方向键逐个挑，停手 1 秒自动落地\n- 双路麦克风的「静音 / 独奏」按钮合并为拨动开关，混音逻辑不变\n- 按键映射的自定义菜单显示「自定义（当前：…）」\n- 豆包输入法设置向导新增第 5 步引导图\n- 主界面副标题显示当前版本号\n\n本次驱动没有变化；已安装过驱动的用户可直接使用 DMG 更新 APP。「睡眠」首次触发时 macOS 会询问是否允许 vRemote 控制“系统事件”，允许一次即可。",
+    "html_url": "https://updates.vincentstudio.org/vremoter/",
+    "published_at": "2026-11-09T00:00:00+08:00",
+    "draft": false,
+    "prerelease": false,
+    "driver_update_required": false,
+    "assets": [
+      {
+        "id": 1001231,
+        "name": "vRemoter-1.2.3.pkg",
+        "browser_download_url": "https://updates.vincentstudio.org/vremoter/vRemoter-1.2.3.pkg",
+        "digest": "sha256:d59be08ab10b3293d1f23eb8cf2ba454af4dd7e9cf353062d7135c46ccb938ba",
+        "size": 8459467
+      },
+      {
+        "id": 1001232,
+        "name": "vRemoter-1.2.3.dmg",
+        "browser_download_url": "https://updates.vincentstudio.org/vremoter/vRemoter-1.2.3.dmg",
+        "digest": "sha256:384201295974aea860b50d7be2057f18b2eb540810d094a0f7cd275c8fe8f66d",
+        "size": 8725052
+      }
+    ]
+  },
+  {
     "id": 1001110,
     "tag_name": "v1.1.1",
     "name": "vRemoter 1.1.1",

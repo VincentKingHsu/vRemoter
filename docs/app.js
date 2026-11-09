@@ -15,14 +15,20 @@ function applyLanguage(nextLanguage) {
   const audioImage = document.querySelector('[data-localized-audio]');
   if (audioImage) {
     audioImage.src = language === 'zh'
-      ? 'assets/screenshots/vremoter-audio-1.1.1.png'
-      : 'assets/screenshots/vremoter-audio-1.1.1-en.png';
+      ? 'assets/screenshots/vremoter-audio-1.2.3.png'
+      : 'assets/screenshots/vremoter-audio-1.2.3-en.png';
   }
   const mappingImage = document.querySelector('[data-localized-mapping]');
   if (mappingImage) {
     mappingImage.src = language === 'zh'
-      ? 'assets/screenshots/vremoter-mapping-chromecast-1.1.1.png'
-      : 'assets/screenshots/vremoter-mapping-chromecast-1.1.1-en.png';
+      ? 'assets/screenshots/vremoter-mapping-chromecast-1.2.3.png'
+      : 'assets/screenshots/vremoter-mapping-chromecast-1.2.3-en.png';
+  }
+  const actionsImage = document.querySelector('[data-localized-actions]');
+  if (actionsImage) {
+    actionsImage.src = language === 'zh'
+      ? 'assets/screenshots/vremoter-keymapping-1.2.3.png'
+      : 'assets/screenshots/vremoter-keymapping-1.2.3-en.png';
   }
   localStorage.setItem('vremoter-language', language);
 }

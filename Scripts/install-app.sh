@@ -2,6 +2,8 @@
 set -euo pipefail
 
 SCRIPT_DIR="${0:A:h}"
+# 2026-11-09: 脚本已移入 Scripts/，回退一层到项目根
+SCRIPT_DIR="${SCRIPT_DIR:h}"
 SOURCE="$SCRIPT_DIR/dist/build/vRemote.app"
 DESTINATION="$HOME/Applications/vRemote.app"
 
