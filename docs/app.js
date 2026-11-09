@@ -27,8 +27,8 @@ function applyLanguage(nextLanguage) {
   const actionsImage = document.querySelector('[data-localized-actions]');
   if (actionsImage) {
     actionsImage.src = language === 'zh'
-      ? 'assets/screenshots/vremoter-keymapping-1.2.3.png'
-      : 'assets/screenshots/vremoter-keymapping-1.2.3-en.png';
+      ? 'assets/screenshots/vremoter-system-actions-1.2.3.png'
+      : 'assets/screenshots/vremoter-system-actions-1.2.3-en.png';
   }
   localStorage.setItem('vremoter-language', language);
 }
