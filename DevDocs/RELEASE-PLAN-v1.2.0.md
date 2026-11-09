@@ -114,19 +114,20 @@
 - [ ] B5 切换应用实测：单击落地到上一个应用；连按切换键逐个右移；方向键←→双向选；停手 1 秒自动落地；会话中按其他键（静音/语音）不受干扰。**X6、Chromecast 各测一轮**
 - [ ] B6 中英文切换各过一遍
 
-### 阶段 C：发版物料（B 通过后）
-- [ ] C1 重截官网图 4 张（中英 × 控制台/映射）
-- [ ] C2 版本号全套替换（VERSION / Info.plist / CHANGELOG / README）
-- [ ] C3 `build-pkg.sh` + `build-dmg.sh`；读回验证 1.2.0 / 120
-- [ ] C4 官网文件：index.html / app.js / 新截图 / 引导图
-- [ ] C5 生成单一服务器上传 ZIP + SHA-256
+### 阶段 C：发版物料 ✅（2026-11-09 13:35）
+- [x] C1 转正：`VRemoterBetaSuffix` 清空，主界面显示「1.2.3」
+- [x] C2 CHANGELOG 1.2.3 条目 + README（版本行、1.2.3 新功能段、v1.2.3 Release 链接、1.2.3 截图）
+- [x] C3 PKG（8,459,467B / sha256 d59be08a…）+ DMG（8,725,052B / sha256 38420129…）读回 1.2.3/123
+- [x] C4 官网：4 张 1.2.3 截图（中英）、KeyMapping 中英展示图 + 新「系统级控制」区块（id=actions）、Chromecast 示意图替换为 marketing 新图、版本文案全套 1.2.3、releases 分支 app.js 更新
+- [x] C5 `Server/releases.json` 首项 v1.2.3（driver_update_required: false）+ 单一上传包 vr123-upload.zip（20,084,229B）
 
-### 阶段 D：上线（大徐老师说「推」才执行）
-- [ ] D1 GitHub push 源码 + tag `v1.2.0`
-- [ ] D2 服务器备份 → 上传 PKG/DMG → 哈希校验
-- [ ] D3 `releases.json` 最后替换（防清单先上线、包还 404）
-- [ ] D4 官网部署 + 公网复验（版本文案 / 下载 200 / 哈希闭环）
-- [ ] D5 知识库归纳（询问大徐老师后执行）
+### 阶段 D：上线 ✅（2026-11-09 13:39）
+- [x] D1 GitHub push main（提交 1943237，26 files +459/−103）
+- [x] D2 GitHub Release `v1.2.3` 正式发布（非草稿非预发布）：https://github.com/VincentKingHsu/vRemoter/releases/tag/v1.2.3
+- [x] D3 仓库 About 简介更新（含新功能关键词）
+- [x] D4 服务器：zip 上传（哈希一致 9c121de2…）→ 备份 `/root/backup-20261109/` → SITE_OK → `releases.json` 最后替换 MANIFEST_OK
+- [x] D5 公网复验：版本文案 5 项全中、8 张图全 200、PKG/DMG 公网下载哈希与本地一致、releases.json 首项 v1.2.3
+- [ ] D6 知识库归纳（等大徐老师确认在线更新测试通过后一起收）
 
 ## 五、文件卫生（2026-11-09 已执行 ✅）
 

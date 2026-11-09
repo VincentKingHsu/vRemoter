@@ -154,7 +154,18 @@ figcaption { margin-top: 11px; color: var(--secondary); font-size: 11px; }
 .remote-card .card-tagline { font-size: 12px; }
 .boundary-note { max-width: 920px; margin: 20px 0 0; font-size: 12px; }
 .tech-detail { max-width: 920px; margin: 6px 0 0; color: var(--muted); font-size: 11px; opacity: .72; }
-.actions-shot img { max-height: 620px; }
+/* 映射区右列第二张图（系统级动作菜单）：定高、宽按比例，禁止拉伸变形 */
+.mapping-shot .system-actions {
+  height: 420px;
+  width: auto;
+  max-width: 100%;
+  margin: 26px auto 0;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 10px;
+  background: #0b0c0e;
+}
+.actions-note { margin-top: 18px; font-size: 13px; }
 
 .voice-band { background: #08090a; }
 .voice-layout { padding-block: 108px; display: grid; grid-template-columns: .86fr 1.14fr; gap: 72px; align-items: start; }
