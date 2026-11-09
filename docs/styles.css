@@ -69,7 +69,13 @@ p { color: var(--secondary); line-height: 1.72; }
 .download-button { padding: 10px 14px; }
 .primary-button { min-height: 48px; padding: 0 20px; }
 
+/* hero 外层全宽带：光晕挂在这一层，延伸到视口边缘而不是内容容器边界 */
+.hero-band {
+  position: relative;
+  overflow: hidden;
+}
 .hero {
+  position: relative;
   min-height: calc(100vh - 68px);
   padding-block: 76px 94px;
   display: grid;
@@ -77,6 +83,40 @@ p { color: var(--secondary); line-height: 1.72; }
   gap: 58px;
   align-items: center;
 }
+/* P1 Aurora 光晕：纯 CSS 绿色氛围，跟随品牌绿 */
+.aurora {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 0;
+}
+.aurora::before,
+.aurora::after {
+  content: "";
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(90px);
+}
+.aurora::after {
+  width: 560px; height: 440px;
+  bottom: -260px;
+  left: calc(50% - 740px);
+  background: radial-gradient(closest-side, rgba(85, 216, 140, .12), transparent 70%);
+}
+/* 右上主光：直接锚在 hero 截图卡上，横纵都随卡片，任何视口下都在卡右上角背后 */
+.hero-shot { position: relative; }
+.hero-shot::before {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  width: 720px; height: 560px;
+  top: -240px; right: -190px;
+  border-radius: 50%;
+  filter: blur(90px);
+  background: radial-gradient(closest-side, rgba(85, 216, 140, .2), transparent 70%);
+}
+.hero-band > :not(.aurora) { position: relative; z-index: 1; }
 .eyebrow { margin-bottom: 14px; color: var(--green); font-size: 12px; font-weight: 800; letter-spacing: .09em; text-transform: uppercase; }
 h1 { max-width: 680px; margin-bottom: 24px; font-size: clamp(44px, 5vw, 67px); line-height: 1.02; letter-spacing: -.045em; }
 h2 { margin-bottom: 18px; font-size: clamp(32px, 3.5vw, 47px); line-height: 1.08; letter-spacing: -.035em; }
@@ -86,11 +126,12 @@ h3 { margin-bottom: 8px; font-size: 18px; }
 .secondary-link { color: var(--green); font-weight: 700; }
 .system-note { margin: 17px 0 0; font-size: 12px; }
 .app-shot { margin: 0; }
+/* P2 辉光截图卡：绿 20% 边框 + 绿 8% 外发光 */
 .app-shot img {
   width: 100%;
-  border: 1px solid var(--line);
+  border: 1px solid rgba(85, 216, 140, .2);
   border-radius: 14px;
-  box-shadow: 0 30px 90px rgba(0, 0, 0, .38);
+  box-shadow: 0 0 60px rgba(85, 216, 140, .08), 0 30px 90px rgba(0, 0, 0, .38);
 }
 figcaption { margin-top: 11px; color: var(--secondary); font-size: 11px; }
 
@@ -154,16 +195,57 @@ figcaption { margin-top: 11px; color: var(--secondary); font-size: 11px; }
 .remote-card .card-tagline { font-size: 12px; }
 .boundary-note { max-width: 920px; margin: 20px 0 0; font-size: 12px; }
 .tech-detail { max-width: 920px; margin: 6px 0 0; color: var(--muted); font-size: 11px; opacity: .72; }
-/* 系统级动作展示块：文案 + 菜单特写横条（原比例，禁止拉伸） */
-.actions-block { margin-top: 30px; }
-.actions-note { font-size: 13.5px; line-height: 1.7; }
-.actions-crop {
-  width: 100%;
-  max-width: 464px;
-  margin-top: 16px;
-  border: 1px solid var(--line);
-  border-radius: 12px;
+/* 系统级动作独立区：滚动中的 peak，全站最亮的氛围处理 */
+.actions-band {
+  position: relative;
+  overflow: hidden;
+  border-block: 1px solid rgba(85, 216, 140, .16);
+  background: linear-gradient(180deg, #0b110d, #080c09);
 }
+.aurora-peak::before {
+  width: 820px; height: 600px;
+  top: -160px; left: 50%;
+  margin-left: -410px;
+  background: radial-gradient(closest-side, rgba(85, 216, 140, .2), transparent 70%);
+}
+.aurora-peak::after {
+  width: 520px; height: 400px;
+  bottom: -200px; right: -140px;
+  background: radial-gradient(closest-side, rgba(85, 216, 140, .12), transparent 70%);
+}
+.actions-layout {
+  position: relative;
+  z-index: 1;
+  padding-block: 108px;
+  display: grid;
+  grid-template-columns: minmax(360px, .9fr) minmax(420px, 1.1fr);
+  gap: 72px;
+  align-items: center;
+}
+.actions-shot img { max-width: 464px; }
+.actions-copy > p:not(.eyebrow) { max-width: 500px; }
+.action-cards { margin-top: 30px; display: grid; gap: 12px; }
+.action-card {
+  display: flex;
+  gap: 16px;
+  align-items: flex-start;
+  padding: 18px 20px;
+  border: 1px solid rgba(85, 216, 140, .18);
+  border-radius: 12px;
+  background: rgba(85, 216, 140, .05);
+}
+.action-card .action-icon {
+  flex: 0 0 auto;
+  width: 40px; height: 40px;
+  display: grid;
+  place-items: center;
+  border: 1px solid rgba(85, 216, 140, .25);
+  border-radius: 10px;
+  background: rgba(85, 216, 140, .12);
+  color: var(--green);
+}
+.action-card h3 { margin-bottom: 4px; font-size: 16px; }
+.action-card p { margin-bottom: 0; font-size: 13px; line-height: 1.6; }
 
 .voice-band { background: #08090a; }
 .voice-layout { padding-block: 108px; display: grid; grid-template-columns: .86fr 1.14fr; gap: 72px; align-items: start; }
@@ -211,13 +293,17 @@ footer { border-top: 1px solid var(--line); }
   .top-actions > a:not(.download-button) { display: none; }
   .hero,
   .mapping-layout,
+  .actions-layout,
   .voice-layout,
   .release-section,
   .support-layout { grid-template-columns: 1fr; }
   .hero { min-height: 0; padding-block: 68px 82px; }
   .hero-copy { max-width: 720px; }
   .mapping-layout,
+  .actions-layout,
   .voice-layout { gap: 42px; }
+  .actions-shot img { max-width: 100%; }
+  .hero-shot::before { right: -120px; opacity: .7; }
   .section-heading-row { grid-template-columns: 1fr; gap: 10px; }
   .section-heading-row > p { justify-self: start; }
   .guide-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
@@ -235,6 +321,7 @@ footer { border-top: 1px solid var(--line); }
   .hero,
   .mapping-layout,
   .remote-section,
+  .actions-layout,
   .voice-layout,
   .guide-band .section-inner,
   .release-section,

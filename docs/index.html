@@ -14,6 +14,7 @@
     <a class="brand" href="#top" aria-label="vRemoter"><img src="assets/brand/vremoter-logo.png" alt=""><span>vRemoter</span></a>
     <nav class="top-actions" aria-label="Primary">
       <a href="#mapping" data-zh="按键映射" data-en="Key Mapping">按键映射</a>
+      <a href="#actions" data-zh="系统动作" data-en="System Actions">系统动作</a>
       <a href="#setup" data-zh="设置" data-en="Setup">设置</a>
       <a href="#release" data-zh="本次更新" data-en="What’s New">本次更新</a>
       <a href="https://github.com/VincentKingHsu/vRemoter" target="_blank" rel="noopener" data-zh="GitHub 源码 ↗" data-en="GitHub Source ↗">GitHub 源码 ↗</a>
@@ -23,7 +24,9 @@
   </header>
 
   <main id="top">
-    <section class="hero section-inner">
+    <section class="hero-band">
+      <div class="aurora" aria-hidden="true"></div>
+      <section class="hero section-inner">
       <div class="hero-copy">
         <p class="eyebrow">vRemoter 1.2.3 · macOS</p>
         <h1 data-zh="沙发上的遥控器，帮你把话说完。" data-en="The remote on your sofa finishes your sentences for you.">沙发上的遥控器，帮你把话说完。</h1>
@@ -38,6 +41,7 @@
         <img data-localized-audio src="assets/screenshots/vremoter-audio-1.2.3.png" alt="vRemoter 1.2.3 界面截图">
         <figcaption data-zh="真实运行界面：麦克风、连接与权限状态一览" data-en="The real interface: microphones, connections, and permissions at a glance">真实运行界面：麦克风、连接与权限状态一览</figcaption>
       </figure>
+      </section>
     </section>
 
     <section class="mapping-band" id="mapping">
@@ -51,16 +55,40 @@
             <li data-zh="任何组合键都能自己录一段，办公软件里最常用的那种" data-en="Record any key combination yourself—the shortcuts your work apps need">任何组合键都能自己录一段，办公软件里最常用的那种</li>
             <li data-zh="设置认型号不认设备，丢了换一只同款照样接着用" data-en="Settings follow the model, so a same-model replacement just works">设置认型号不认设备，丢了换一只同款照样接着用</li>
           </ul>
-          <div class="actions-block">
-            <p class="eyebrow" data-zh="1.2.3 新增 · 系统级动作" data-en="New in 1.2.3 · System actions">1.2.3 新增 · 系统级动作</p>
-            <p class="actions-note" data-zh="电源键从此有了正经工作：锁屏、睡眠、切换应用，随便指。看片累了按一下锁屏，起身倒水按一下睡眠；切换应用和真键盘 ⌘Tab 手感一致——连着按逐个挑，停手一秒就落地。" data-en="The power button gets a real job: Lock, Sleep, and App Switching. One tap locks the screen, one tap sleeps the Mac, and app switching feels exactly like ⌘Tab—keep tapping to browse, pause one second to land.">电源键从此有了正经工作：锁屏、睡眠、切换应用，随便指。看片累了按一下锁屏，起身倒水按一下睡眠；切换应用和真键盘 ⌘Tab 手感一致——连着按逐个挑，停手一秒就落地。</p>
-            <img class="actions-crop" data-localized-actions src="assets/screenshots/vremoter-system-actions-1.2.3.png" alt="系统级动作菜单选项">
-          </div>
         </div>
         <figure class="app-shot mapping-shot">
           <img data-localized-mapping src="assets/screenshots/vremoter-mapping-chromecast-1.2.3.png" alt="Chromecast Voice Remote 按键映射界面">
           <figcaption data-zh="Chromecast Voice Remote 按键映射" data-en="Chromecast Voice Remote key mapping">Chromecast Voice Remote 按键映射</figcaption>
         </figure>
+      </div>
+    </section>
+
+    <section class="actions-band" id="actions">
+      <div class="aurora aurora-peak" aria-hidden="true"></div>
+      <div class="section-inner actions-layout">
+        <figure class="app-shot actions-shot">
+          <img data-localized-actions src="assets/screenshots/vremoter-system-actions-1.2.3.png" alt="系统级动作菜单选项">
+          <figcaption data-zh="映射菜单里的系统级动作选项，任意按键都能指过去" data-en="System actions in the mapping menu—assign them to any button">映射菜单里的系统级动作选项，任意按键都能指过去</figcaption>
+        </figure>
+        <div class="actions-copy">
+          <p class="eyebrow" data-zh="1.2.3 新增 · 系统级动作" data-en="New in 1.2.3 · System actions">1.2.3 新增 · 系统级动作</p>
+          <h2 data-zh="锁屏、睡眠、切换应用——随意设置。" data-en="Lock, Sleep, App Switching—map any button you like.">锁屏、睡眠、切换应用——随意设置。</h2>
+          <p data-zh="任意遥控器按键都能指定为系统级动作，映射菜单里两下就配好。" data-en="Assign any remote button to a system action—it takes two clicks in the mapping menu.">任意遥控器按键都能指定为系统级动作，映射菜单里两下就配好。</p>
+          <div class="action-cards">
+            <div class="action-card">
+              <span class="action-icon" aria-hidden="true"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="11" width="16" height="9" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg></span>
+              <div><h3 data-zh="锁屏" data-en="Lock">锁屏</h3><p data-zh="起身就走，按一下立刻锁屏。" data-en="Get up and go—one tap locks the screen.">起身就走，按一下立刻锁屏。</p></div>
+            </div>
+            <div class="action-card">
+              <span class="action-icon" aria-hidden="true"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.8A9 9 0 1 1 11.2 3 7 7 0 0 0 21 12.8z"/></svg></span>
+              <div><h3 data-zh="睡眠" data-en="Sleep">睡眠</h3><p data-zh="整台 Mac 安静下来，明早再战。" data-en="The whole Mac quiets down, ready for tomorrow.">整台 Mac 安静下来，明早再战。</p></div>
+            </div>
+            <div class="action-card">
+              <span class="action-icon" aria-hidden="true"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="12" height="12" rx="2"/><rect x="9" y="9" width="12" height="12" rx="2"/></svg></span>
+              <div><h3 data-zh="切换应用" data-en="App Switching">切换应用</h3><p data-zh="⌘Tab 手感，连按挑选，停手一秒落地。" data-en="⌘Tab feel: keep tapping to browse, pause one second to land.">⌘Tab 手感，连按挑选，停手一秒落地。</p></div>
+            </div>
+          </div>
+        </div>
       </div>
     </section>
 
@@ -110,8 +138,8 @@
           <figure><img src="assets/guides/permission-accessibility.png" alt="辅助功能权限"><figcaption data-zh="辅助功能" data-en="Accessibility">辅助功能</figcaption></figure>
           <figure><img src="assets/guides/permission-input-monitoring.png" alt="输入监控权限"><figcaption data-zh="输入监控" data-en="Input Monitoring">输入监控</figcaption></figure>
           <figure><img src="assets/guides/permission-bluetooth.png" alt="蓝牙权限"><figcaption data-zh="蓝牙" data-en="Bluetooth">蓝牙</figcaption></figure>
-          <figure><img src="assets/guides/doubaoinput2.png" alt="豆包麦克风选择"><figcaption data-zh="豆包输入设备" data-en="Doubao input device">豆包输入设备</figcaption></figure>
           <figure><img src="assets/guides/doubaoinput3.png" alt="豆包输入法设置引导"><figcaption data-zh="按图完成设置" data-en="Finish as shown">按图完成设置</figcaption></figure>
+          <figure><img src="assets/guides/doubaoinput2.png" alt="豆包麦克风选择"><figcaption data-zh="豆包输入设备" data-en="Doubao input device">豆包输入设备</figcaption></figure>
         </div>
       </div>
     </section>
@@ -119,11 +147,11 @@
     <section class="section-inner release-section" id="release">
       <div class="release-copy">
         <p class="eyebrow" data-zh="版本 1.2.3" data-en="Version 1.2.3">版本 1.2.3</p>
-        <h2 data-zh="遥控器电源键，从此管你的 Mac。" data-en="Your remote's power button now runs your Mac.">遥控器电源键，从此管你的 Mac。</h2>
+        <h2 data-zh="一个按键，管起整台 Mac。" data-en="One button now runs your whole Mac.">一个按键，管起整台 Mac。</h2>
         <a class="primary-button inline-button" href="https://updates.vincentstudio.org/vremoter/" data-zh="查看更新日志与下载" data-en="View release notes and downloads">查看更新日志与下载</a>
       </div>
       <ul class="release-list">
-        <li data-zh="新增系统级锁屏、睡眠、切换应用：电源键看片累了按一下锁屏，起身倒水按一下睡眠" data-en="System-level lock, sleep, and app switching: map your remote's power button to any of them">新增系统级锁屏、睡眠、切换应用：电源键看片累了按一下锁屏，起身倒水按一下睡眠</li>
+        <li data-zh="新增系统级锁屏、睡眠、切换应用：任意按键都能指过去，看片累了按一下锁屏，起身倒水按一下睡眠" data-en="System-level lock, sleep, and app switching: assign any button you like">新增系统级锁屏、睡眠、切换应用：任意按键都能指过去，看片累了按一下锁屏，起身倒水按一下睡眠</li>
         <li data-zh="切换应用和真键盘 ⌘Tab 手感一致：单击切上一个，连按逐个挑，停手一秒就落地" data-en="App switching feels exactly like ⌘Tab: tap once to go back, keep tapping to browse, pause one second to land">切换应用和真键盘 ⌘Tab 手感一致：单击切上一个，连按逐个挑，停手一秒就落地</li>
         <li data-zh="双路麦克风的静音与独奏合并成一个拨动开关，开就是参与，关就是闭麦" data-en="The mute and solo buttons for both microphones are now one clear toggle each">双路麦克风的静音与独奏合并成一个拨动开关，开就是参与，关就是闭麦</li>
         <li data-zh="豆包输入法向导新增第 5 步引导图，照着设一次就能用" data-en="The Doubao setup guide gained a fifth step, so first-time setup just works">豆包输入法向导新增第 5 步引导图，照着设一次就能用</li>
