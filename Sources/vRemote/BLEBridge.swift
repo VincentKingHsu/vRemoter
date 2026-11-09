@@ -53,6 +53,9 @@ final class BLEBridge: NSObject {
     private var atvvCharsComplete = false
     private var connectedPeripheralID: UUID?
     private var connectTimeout: DispatchWorkItem?
+    /// Polls for the remote while scanning. A remote that macOS has already
+    /// reconnected as HID stops advertising, so the scan alone never sees it.
+    private var connectedPeripheralPoll: Timer?
 
     private let protocolHandler = ATVVProtocol()
     private var streamID: UInt8 = 0
@@ -107,6 +110,7 @@ final class BLEBridge: NSObject {
 
     func stop() {
         isStarted = false
+        stopConnectedPeripheralPoll()
         closeTimeoutWorkItem?.cancel()
         closeTimeoutWorkItem = nil
         stopKeepAliveTimer()
@@ -263,6 +267,36 @@ final class BLEBridge: NSObject {
             withServices: nil,
             options: [CBCentralManagerScanOptionAllowDuplicatesKey: false]
         )
+        startConnectedPeripheralPoll()
+    }
+
+    private func startConnectedPeripheralPoll() {
+        stopConnectedPeripheralPoll()
+        connectedPeripheralPoll = Timer.scheduledTimer(
+            withTimeInterval: 3.0,
+            repeats: true
+        ) { [weak self] _ in
+            guard let self, self.isStarted,
+                  self.central.state == .poweredOn,
+                  self.connectedPeripheralID == nil
+            else { return }
+            let connected = self.central.retrieveConnectedPeripherals(
+                withServices: [Self.serviceUUID]
+            )
+            guard let candidate = connected.first(where: self.matches) else {
+                return
+            }
+            print(
+                "[\(self.logTag)] 扫描期间发现系统已连接设备，直接 connect: " +
+                "\(candidate.identifier)"
+            )
+            self.connect(to: candidate)
+        }
+    }
+
+    private func stopConnectedPeripheralPoll() {
+        connectedPeripheralPoll?.invalidate()
+        connectedPeripheralPoll = nil
     }
 
     fileprivate func saveUUID(_ id: UUID) {
@@ -282,6 +316,7 @@ final class BLEBridge: NSObject {
     ) {
         guard matches(p) else { return }
         connectTimeout?.cancel()
+        stopConnectedPeripheralPoll()
         peripheral = p
         connectedPeripheralID = nil
         p.delegate = self
@@ -460,6 +495,9 @@ extension BLEBridge: CBCentralManagerDelegate {
     func centralManager(_ central: CBCentralManager,
                         didDisconnectPeripheral peripheral: CBPeripheral,
                         error: Error?) {
+        // A pending attempt cancelled by the connect timeout also lands here;
+        // its timeout handler already started scanning.
+        let wasConnected = connectedPeripheralID == peripheral.identifier
         connectTimeout?.cancel()
         connectTimeout = nil
         closeTimeoutWorkItem?.cancel()
@@ -468,8 +506,12 @@ extension BLEBridge: CBCentralManagerDelegate {
         print("[\(logTag)] 断开: \(error?.localizedDescription ?? "ok")")
         onConnectionChanged?(false)
         finishAudioStreamLocally(reason: 0xFC)
+        // Reconnect the way launch does: the remote usually comes back as a
+        // system-connected HID device that no longer advertises.
+        guard wasConnected else { return }
         DispatchQueue.main.asyncAfter(deadline: .now() + 2) { [weak self] in
-            self?.beginScan()
+            guard let self, self.isStarted else { return }
+            self.tryDirectConnect()
         }
     }
 }
