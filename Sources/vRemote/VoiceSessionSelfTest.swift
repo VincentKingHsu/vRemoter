@@ -41,28 +41,36 @@ enum VoiceSessionSelfTest {
         let coordinator: X6SessionCoordinator
         var clock = Date(timeIntervalSince1970: 1_000)
         var triggerTapCount = 0
+        var triggerIntents = [VoiceTriggerIntent]()
+        var sessionFinishedCount = 0
         var routeChanges = [Bool]()
         var openRequests = [(VoiceRemoteID, Bool)]()
         var closeRequestCount = 0
         var openResults = [RemoteMicrophoneOpenResult]()
         var preferredRemote: VoiceRemoteID? = .chromecast
 
-        init(initialState: DoubaoAudioStateMonitor.State = .inactive) {
+        init(
+            initialState: DoubaoAudioStateMonitor.State = .inactive,
+            observesToolState: Bool = true
+        ) {
             doubao = FakeDoubaoState(state: initialState)
             var routeSink: ((Bool) -> Void)?
-            var triggerSink: (() -> Void)?
+            var triggerSink: ((VoiceTriggerIntent) -> Void)?
             var nowSink: (() -> Date)?
             coordinator = X6SessionCoordinator(
                 doubaoState: doubao,
                 setRemoteRouteActive: { routeSink?($0) },
-                triggerTap: { triggerSink?() },
+                triggerTap: { triggerSink?($0) },
+                observesToolState: { observesToolState },
+                toolName: { "TestTool" },
                 now: { nowSink?() ?? Date(timeIntervalSince1970: 0) }
             )
             routeSink = { [weak self] active in
                 self?.routeChanges.append(active)
             }
-            triggerSink = { [weak self] in
+            triggerSink = { [weak self] intent in
                 self?.triggerTapCount += 1
+                self?.triggerIntents.append(intent)
             }
             nowSink = { [weak self] in
                 self?.clock ?? Date(timeIntervalSince1970: 0)
@@ -80,6 +88,9 @@ enum VoiceSessionSelfTest {
             }
             coordinator.onMicrophoneCloseRequested = { [weak self] in
                 self?.closeRequestCount += 1
+            }
+            coordinator.onSessionFinished = { [weak self] in
+                self?.sessionFinishedCount += 1
             }
             coordinator.start()
         }
@@ -133,6 +144,9 @@ enum VoiceSessionSelfTest {
         testChromecastReasonZeroWhileClosedIsIgnored(checks)
         testIndependentRemoteStops(checks)
         testDebouncedRetry(checks)
+        testUnobservedToolTapToggle(checks)
+        testUnobservedToolIgnoresDoubaoSnapshots(checks)
+        testUnobservedToolKeyboardToggle(checks)
         emit("[SELF-TEST] completed failures=\(checks.failures)")
         return checks.failures == 0
     }
@@ -262,6 +276,93 @@ enum VoiceSessionSelfTest {
         c.expect(
             h.coordinator.debugSnapshot.streamingRemotes.isEmpty,
             "stale Chromecast reason-0 is closed locally"
+        )
+    }
+
+    // MARK: - Tools without an observable recording state (WeType, custom)
+
+    private static func testUnobservedToolTapToggle(_ c: CheckContext) {
+        let h = Harness(observesToolState: false)
+        h.beginChromecastPress()
+        c.expect(
+            h.coordinator.debugSnapshot.phase == "open",
+            "unobserved tool opens without waiting for CoreAudio"
+        )
+        h.advance(0.15)
+        h.endChromecastPress()
+        c.expect(
+            h.openRequests.count == 1,
+            "unobserved tool still requests a persistent stream after a tap"
+        )
+        h.coordinator.remoteAudioStarted(remote: .chromecast, reason: 0x00)
+        h.beginChromecastPress()
+        h.advance(0.15)
+        h.endChromecastPress()
+        c.expect(
+            h.triggerIntents == [.open, .close],
+            "unobserved tool receives exactly one open then one close trigger"
+        )
+        c.expect(
+            h.coordinator.debugSnapshot.phase == "closing",
+            "unobserved second tap enters closing"
+        )
+        RunLoop.current.run(until: Date().addingTimeInterval(1.35))
+        c.expect(
+            h.coordinator.debugSnapshot.phase == "closed",
+            "unobserved close completes without CoreAudio confirmation"
+        )
+        c.expect(
+            h.sessionFinishedCount == 1,
+            "session-finished fires once so the input source can be restored"
+        )
+    }
+
+    private static func testUnobservedToolIgnoresDoubaoSnapshots(
+        _ c: CheckContext
+    ) {
+        let h = Harness(observesToolState: false)
+        h.coordinator.remoteAudioStarted(remote: .x6, reason: 0x00)
+        h.doubao.emit(.inactive)
+        h.doubao.emit(.unavailable)
+        c.expect(
+            h.coordinator.debugSnapshot.phase == "open",
+            "Doubao snapshots cannot close another tool's session"
+        )
+        RunLoop.current.run(until: Date().addingTimeInterval(1.15))
+        c.expect(
+            h.coordinator.debugSnapshot.phase == "open",
+            "no opening timeout applies to an unobserved tool"
+        )
+        h.doubao.emit(.active)
+        h.coordinator.remoteHIDShortPress()
+        c.expect(
+            h.triggerIntents == [.open, .close],
+            "X6 HID short press closes the unobserved session once"
+        )
+    }
+
+    private static func testUnobservedToolKeyboardToggle(_ c: CheckContext) {
+        let h = Harness(observesToolState: false)
+        h.coordinator.triggerDownObserved(isSynthetic: false)
+        h.coordinator.triggerUpObserved(isSynthetic: false)
+        c.expect(
+            h.coordinator.debugSnapshot.phase == "open",
+            "physical trigger opens an unobserved session"
+        )
+        c.expect(
+            h.openRequests.first?.0 == .chromecast,
+            "physical trigger opens the preferred remote microphone"
+        )
+        RunLoop.current.run(until: Date().addingTimeInterval(0.2))
+        h.coordinator.triggerDownObserved(isSynthetic: false)
+        h.coordinator.triggerUpObserved(isSynthetic: false)
+        c.expect(
+            h.coordinator.debugSnapshot.phase == "closing",
+            "second physical trigger closes the unobserved session"
+        )
+        c.expect(
+            h.triggerTapCount == 0,
+            "physical triggers are never replayed to an unobserved tool"
         )
     }
 

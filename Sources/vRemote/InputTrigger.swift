@@ -4,6 +4,7 @@ import Foundation
 enum InputTriggerKey: String, CaseIterable, Identifiable {
     case option
     case command
+    case rightCommand
     case control
     case shift
     case function
@@ -14,6 +15,7 @@ enum InputTriggerKey: String, CaseIterable, Identifiable {
         switch self {
         case .option: "Option (⌥)"
         case .command: "Command (⌘)"
+        case .rightCommand: L10n.text("右 Command (⌘)", "Right Command (⌘)")
         case .control: "Control (⌃)"
         case .shift: "Shift (⇧)"
         case .function: "Fn / Globe"
@@ -24,6 +26,7 @@ enum InputTriggerKey: String, CaseIterable, Identifiable {
         switch self {
         case .option: [0x3A, 0x3D]
         case .command: [0x37, 0x36]
+        case .rightCommand: [0x36]
         case .control: [0x3B, 0x3E]
         case .shift: [0x38, 0x3C]
         case .function: [0x3F]
@@ -37,10 +40,20 @@ enum InputTriggerKey: String, CaseIterable, Identifiable {
     var flag: CGEventFlags {
         switch self {
         case .option: .maskAlternate
-        case .command: .maskCommand
+        case .command, .rightCommand: .maskCommand
         case .control: .maskControl
         case .shift: .maskShift
         case .function: .maskSecondaryFn
+        }
+    }
+
+    /// Flags for a synthetic key-down. Side-specific triggers also carry the
+    /// device-dependent bit (NX_DEVICERCMDKEYMASK) so tools that distinguish
+    /// left and right modifiers see the correct side.
+    var syntheticDownFlags: CGEventFlags {
+        switch self {
+        case .rightCommand: CGEventFlags(rawValue: flag.rawValue | 0x10)
+        default: flag
         }
     }
 }
@@ -77,7 +90,7 @@ enum Key {
             virtualKey: trigger.primaryKeyCode,
             keyDown: keyDown
         ) else { return }
-        event.flags = keyDown ? trigger.flag : []
+        event.flags = keyDown ? trigger.syntheticDownFlags : []
         event.setIntegerValueField(.eventSourceUserData, value: syntheticMarker)
         event.post(tap: .cghidEventTap)
         print(

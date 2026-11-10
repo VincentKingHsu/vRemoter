@@ -1,6 +1,6 @@
 // vRemote for macOS.
 //
-// 1. Supported remote voice key → matching Option toggle semantics
+// 1. Supported remote voice key → the selected voice tool's trigger (toggle)
 // 2. Remote ATVV + Mac microphone → aligned mix → vRemoteDr 2ch → Doubao
 // 3. A physical Mac Option key controls the same remote microphone session
 //
@@ -10,7 +10,8 @@
 //     Accessibility) for Option observation and Search suppression
 //   * vRemoteDriver.driver installed and visible as vRemoteDr 2ch in
 //     System Settings → Sound → Input/Output
-//   * Doubao IME configured for Option-as-voice-mode trigger
+//   * The selected voice tool (Doubao, WeType, …) configured with the same
+//     toggle trigger key as vRemoter (see VoiceInputTool.swift)
 //
 // Run:   swift run
 // Quit:  menu bar icon → 退出, or Ctrl+C
@@ -46,8 +47,12 @@ final class AppController: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private let chromecastHID = ChromecastRemoteHIDBridge()
     private let x6SearchSuppressor = X6SearchSuppressor()
     private let doubaoAudioState = DoubaoAudioStateMonitor()
+    private let voiceInputSource = VoiceInputSourceSession()
     private lazy var x6Session = X6SessionCoordinator(
-        doubaoState: doubaoAudioState
+        doubaoState: doubaoAudioState,
+        triggerTap: { [unowned self] intent in
+            self.sendVoiceTrigger(intent)
+        }
     )
     private let debugWindow = DebugWindowController()
     private let updateWindow = UpdateWindowController()
@@ -279,6 +284,9 @@ final class AppController: NSObject, NSApplicationDelegate, NSMenuDelegate {
                 bypassDebounce: bypassDebounce
             ) ?? .unavailable
         }
+        x6Session.onSessionFinished = { [weak self] in
+            self?.voiceInputSource.restore()
+        }
         x6Session.onStateChanged = { [weak self] status in
             self?.headerLabel.title = "状态 · \(status)"
             self?.updateStatus()
@@ -482,11 +490,19 @@ final class AppController: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private func updateStatus() {
         let anyHID = x6HIDConnected || chromecastHIDConnected
         let anyBLE = x6BLEConnected || chromecastBLEConnected
+        let tool = VoiceInputTool.selected
         let doubaoSnapshot = doubaoAudioState.snapshotNow()
+        // Only tools with an observable recording state report their input
+        // device; for the others the snapshot is ignored.
+        let toolIsRecording = tool.observesRecordingState
+            && doubaoSnapshot.isRecording
         let doubaoUsesVRemote = doubaoSnapshot.inputDeviceNames.contains("vRemoteDr 2ch")
         let statusText: String
-        if doubaoSnapshot.isRecording && !doubaoUsesVRemote {
-            statusText = L10n.text("豆包输入设备错误", "Incorrect Doubao input")
+        if toolIsRecording && !doubaoUsesVRemote {
+            statusText = L10n.text(
+                "\(tool.shortName)输入设备错误",
+                "Incorrect \(tool.shortName) input"
+            )
         } else if remoteStreaming {
             statusText = L10n.text("遥控器录音中", "Remote recording")
         } else if anyHID && anyBLE {
@@ -505,7 +521,7 @@ final class AppController: NSObject, NSApplicationDelegate, NSMenuDelegate {
             remoteStreaming: remoteStreaming,
             macInputEnabled: AudioPipe.shared.isMacInputEnabled,
             remoteInputEnabled: AudioPipe.shared.isRemoteInputEnabled,
-            doubaoIsRecording: doubaoSnapshot.isRecording,
+            doubaoIsRecording: toolIsRecording,
             doubaoInput: doubaoSnapshot.deviceSummary,
             driverAvailable: AudioPipe.shared.isOutputDeviceAvailable,
             x6Connected: x6HIDConnected || x6BLEConnected,
@@ -547,6 +563,11 @@ final class AppController: NSObject, NSApplicationDelegate, NSMenuDelegate {
         }
         debugWindow.onInputTriggerChanged = { [weak self] in
             self?.x6SearchSuppressor.triggerConfigurationDidChange()
+        }
+        debugWindow.onVoiceInputToolChanged = { [weak self] in
+            print("[VOICE-TOOL] selected \(VoiceInputTool.selected.rawValue)")
+            self?.x6SearchSuppressor.triggerConfigurationDidChange()
+            self?.updateStatus()
         }
         debugWindow.onRemoteMappingEnabledChanged = { [weak self] remote, enabled in
             switch remote {
@@ -736,6 +757,19 @@ final class AppController: NSObject, NSApplicationDelegate, NSMenuDelegate {
     @objc private func clearRecordings() {
         x6BLE.clearRecordings()
         refreshSizeLabels()
+    }
+
+    /// Delivers the voice trigger to the selected tool. Opening first makes
+    /// sure the tool's input source is active so it can see its shortcut.
+    private func sendVoiceTrigger(_ intent: VoiceTriggerIntent) {
+        switch intent {
+        case .open:
+            voiceInputSource.prepare(for: VoiceInputTool.selected) {
+                Key.triggerTap()
+            }
+        case .close:
+            Key.triggerTap()
+        }
     }
 
     @objc private func quit() {
