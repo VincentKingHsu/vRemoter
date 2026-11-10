@@ -252,6 +252,9 @@ final class AppController: NSObject, NSApplicationDelegate, NSMenuDelegate {
                 reason: reason
             )
         }
+        chromecastBLE.onFirstAudioFrame = { [weak self] in
+            self?.x6Session.remoteAudioFrameReceived(remote: .chromecast)
+        }
         chromecastBLE.onMicrophoneOpenFailed = { [weak self] code in
             self?.x6Session.remoteMicrophoneOpenFailed(
                 remote: .chromecast,
@@ -267,6 +270,12 @@ final class AppController: NSObject, NSApplicationDelegate, NSMenuDelegate {
         }
         x6Session.onMicrophoneCloseRequested = { [weak self] in
             self?.closeAllRemoteMicrophones()
+        }
+        x6Session.onRemoteMicrophoneCloseRequested = { [weak self] remote in
+            switch remote {
+            case .x6: self?.x6BLE.closeMicrophone(force: true)
+            case .chromecast: self?.chromecastBLE.closeMicrophone(force: true)
+            }
         }
         x6Session.onMicrophoneOpenRequested = {
             [weak self] remote, bypassDebounce in

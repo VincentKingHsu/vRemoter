@@ -44,6 +44,7 @@ enum VoiceSessionSelfTest {
         var routeChanges = [Bool]()
         var openRequests = [(VoiceRemoteID, Bool)]()
         var closeRequestCount = 0
+        var remoteCloseRequests = [VoiceRemoteID]()
         var openResults = [RemoteMicrophoneOpenResult]()
         var preferredRemote: VoiceRemoteID? = .chromecast
 
@@ -80,6 +81,9 @@ enum VoiceSessionSelfTest {
             }
             coordinator.onMicrophoneCloseRequested = { [weak self] in
                 self?.closeRequestCount += 1
+            }
+            coordinator.onRemoteMicrophoneCloseRequested = { [weak self] in
+                self?.remoteCloseRequests.append($0)
             }
             coordinator.start()
         }
@@ -133,6 +137,8 @@ enum VoiceSessionSelfTest {
         testChromecastReasonZeroWhileClosedIsIgnored(checks)
         testIndependentRemoteStops(checks)
         testDebouncedRetry(checks)
+        testSilentAckReopens(checks)
+        testFirstFrameKeepsStream(checks)
         emit("[SELF-TEST] completed failures=\(checks.failures)")
         return checks.failures == 0
     }
@@ -278,6 +284,36 @@ enum VoiceSessionSelfTest {
             h.coordinator.debugSnapshot.openRequestedRemote == .chromecast,
             "only the sent retry becomes pending"
         )
+    }
+
+    private static func testSilentAckReopens(_ c: CheckContext) {
+        let h = Harness()
+        h.beginChromecastPress()
+        h.advance(0.09)
+        h.endChromecastPress()
+        h.doubao.emit(.active)
+        h.coordinator.remoteAudioStarted(remote: .chromecast, reason: 0x00)
+        c.expect(h.remoteCloseRequests.isEmpty, "silent ack is not closed immediately")
+        RunLoop.current.run(until: Date().addingTimeInterval(0.95))
+        c.expect(h.remoteCloseRequests == [.chromecast], "silent ack closes only that remote")
+        c.expect(h.openRequests.count == 1, "reopen waits for AUDIO_STOP")
+        h.coordinator.remoteAudioStopped(remote: .chromecast, reason: 0x00)
+        c.expect(h.openRequests.count == 2, "AUDIO_STOP of silent stream reopens microphone")
+        c.expect(h.coordinator.debugSnapshot.phase == "open", "silent-ack recovery keeps session open")
+        c.expect(h.triggerTapCount == 1, "silent-ack recovery sends no extra trigger")
+    }
+
+    private static func testFirstFrameKeepsStream(_ c: CheckContext) {
+        let h = Harness()
+        h.beginChromecastPress()
+        h.advance(0.15)
+        h.endChromecastPress()
+        h.doubao.emit(.active)
+        h.coordinator.remoteAudioStarted(remote: .chromecast, reason: 0x00)
+        h.coordinator.remoteAudioFrameReceived(remote: .chromecast)
+        RunLoop.current.run(until: Date().addingTimeInterval(0.95))
+        c.expect(h.remoteCloseRequests.isEmpty, "streaming audio is never reopened")
+        c.expect(h.openRequests.count == 1, "streaming audio sends no extra MIC_OPEN")
     }
 }
 #endif

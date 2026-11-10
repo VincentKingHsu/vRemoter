@@ -61,6 +61,9 @@ final class X6SessionCoordinator {
 
     private static let remoteHoldThreshold: TimeInterval = 0.55
     private static let openConfirmationTimeout: TimeInterval = 1.0
+    // A working Chromecast stream delivers its first frame 150–175 ms
+    // after AUDIO_START; a silent ack never does.
+    private static let firstAudioFrameTimeout: TimeInterval = 0.3
     private static let closeVerificationTimeout: TimeInterval = 1.2
     private static let maximumOpenAttempts = 3
 
@@ -76,6 +79,10 @@ final class X6SessionCoordinator {
     private var sessionRemote: VoiceRemoteID?
     private var streamingRemotes = Set<VoiceRemoteID>()
     private var openRequestedRemote: VoiceRemoteID?
+    private var openRequestedAttempt = 1
+    /// Remote whose silent stream was closed and must reopen once its
+    /// AUDIO_STOP arrives, with the attempt number to use.
+    private var reopenAfterStop: (remote: VoiceRemoteID, attempt: Int)?
     private var physicalVoiceGestures = [VoiceRemoteID: PhysicalVoiceGesture]()
 
     private var routeCloseWorkItem: DispatchWorkItem?
@@ -83,11 +90,14 @@ final class X6SessionCoordinator {
     private var closeVerificationWorkItem: DispatchWorkItem?
     private var openRetryWorkItem: DispatchWorkItem?
     private var openConfirmationWorkItem: DispatchWorkItem?
+    private var firstFrameWorkItem: DispatchWorkItem?
+    private var firstFrameRemote: VoiceRemoteID?
 
     var preferredRemoteProvider: (() -> VoiceRemoteID?)?
     var onMicrophoneOpenRequested:
         ((VoiceRemoteID, Bool) -> RemoteMicrophoneOpenResult)?
     var onMicrophoneCloseRequested: (() -> Void)?
+    var onRemoteMicrophoneCloseRequested: ((VoiceRemoteID) -> Void)?
     var onStateChanged: ((String) -> Void)?
 
     init(
@@ -130,6 +140,8 @@ final class X6SessionCoordinator {
     ) {
         let snapshot = doubaoState.snapshotNow()
         let inserted = streamingRemotes.insert(remote).inserted
+        let hostRequestedAttempt =
+            openRequestedRemote == remote ? openRequestedAttempt : nil
         if openRequestedRemote == remote {
             openRequestedRemote = nil
             openConfirmationWorkItem?.cancel()
@@ -190,6 +202,13 @@ final class X6SessionCoordinator {
         switch phase {
         case .opening, .open:
             publish("豆包录音中 · 遥控器已接入")
+            // After a very short Chromecast tap the remote can ack MIC_OPEN
+            // with AUDIO_START yet never stream audio (mic LED stays off).
+            if remote == .chromecast, reason == 0x00,
+               let attempt = hostRequestedAttempt
+            {
+                scheduleFirstFrameWatchdog(remote: remote, attempt: attempt)
+            }
 
         case .closed:
             // Chromecast reserves reason 0x03 for a physical voice press, so
@@ -230,7 +249,12 @@ final class X6SessionCoordinator {
         }
     }
 
+    func remoteAudioFrameReceived(remote: VoiceRemoteID) {
+        cancelFirstFrameWatchdog(for: remote)
+    }
+
     func remoteAudioStopped(remote: VoiceRemoteID, reason: UInt8) {
+        cancelFirstFrameWatchdog(for: remote)
         streamingRemotes.remove(remote)
         if openRequestedRemote == remote {
             openRequestedRemote = nil
@@ -292,6 +316,17 @@ final class X6SessionCoordinator {
             String(format: "0x%02x", reason) +
             " phase=\(phase.rawValue)"
         )
+
+        if let pending = reopenAfterStop, pending.remote == remote {
+            reopenAfterStop = nil
+            guard phase == .opening || phase == .open else { return }
+            requestRemoteTransportOpen(
+                remote,
+                bypassDebounce: true,
+                attempt: pending.attempt
+            )
+            return
+        }
 
         // Do not automatically reopen a generic transport STOP. X6 may emit
         // it immediately before its HID toggle-off edge. Only the proven
@@ -621,6 +656,7 @@ final class X6SessionCoordinator {
         switch result {
         case .sent:
             openRequestedRemote = remote
+            openRequestedAttempt = attempt
             scheduleOpenConfirmation(
                 remote: remote,
                 attempt: attempt,
@@ -730,6 +766,52 @@ final class X6SessionCoordinator {
         )
     }
 
+    /// Closes and reopens a stream the remote acknowledged but never fed
+    /// with audio. The reopen waits for the remote's AUDIO_STOP so the
+    /// bridge is idle again before the next MIC_OPEN.
+    private func scheduleFirstFrameWatchdog(
+        remote: VoiceRemoteID,
+        attempt: Int
+    ) {
+        firstFrameWorkItem?.cancel()
+        firstFrameRemote = remote
+        let expectedGeneration = generation
+        let work = DispatchWorkItem { [weak self] in
+            guard let self,
+                  self.generation == expectedGeneration,
+                  self.streamingRemotes.contains(remote),
+                  self.phase == .opening || self.phase == .open
+            else { return }
+            self.firstFrameWorkItem = nil
+            self.firstFrameRemote = nil
+            guard attempt < Self.maximumOpenAttempts else {
+                print(
+                    "[VOICE-SESSION] MIC_OPEN acked but no audio; " +
+                    "retries exhausted remote=\(remote.rawValue)"
+                )
+                return
+            }
+            print(
+                "[VOICE-SESSION] MIC_OPEN acked but no audio; reopening " +
+                "remote=\(remote.rawValue) attempt=\(attempt + 1)"
+            )
+            self.reopenAfterStop = (remote, attempt + 1)
+            self.onRemoteMicrophoneCloseRequested?(remote)
+        }
+        firstFrameWorkItem = work
+        DispatchQueue.main.asyncAfter(
+            deadline: .now() + Self.firstAudioFrameTimeout,
+            execute: work
+        )
+    }
+
+    private func cancelFirstFrameWatchdog(for remote: VoiceRemoteID) {
+        guard firstFrameRemote == remote else { return }
+        firstFrameWorkItem?.cancel()
+        firstFrameWorkItem = nil
+        firstFrameRemote = nil
+    }
+
     // MARK: - Verification and route lifecycle
 
     private func scheduleStartVerification(for expectedGeneration: UInt64) {
@@ -831,6 +913,10 @@ final class X6SessionCoordinator {
         openRetryWorkItem = nil
         openConfirmationWorkItem?.cancel()
         openConfirmationWorkItem = nil
+        firstFrameWorkItem?.cancel()
+        firstFrameWorkItem = nil
+        firstFrameRemote = nil
+        reopenAfterStop = nil
     }
 
     private func closeRouteAndTransports() {
@@ -855,6 +941,10 @@ final class X6SessionCoordinator {
         openRetryWorkItem = nil
         openConfirmationWorkItem?.cancel()
         openConfirmationWorkItem = nil
+        firstFrameWorkItem?.cancel()
+        firstFrameWorkItem = nil
+        firstFrameRemote = nil
+        reopenAfterStop = nil
     }
 
     private func publish(_ status: String) {

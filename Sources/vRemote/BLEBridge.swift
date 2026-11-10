@@ -38,6 +38,9 @@ final class BLEBridge: NSObject {
     /// from a host-requested persistent stream.
     var onAudioStarted: ((UInt8 /* reason */, Int /* sampleRate */) -> Void)?
     var onAudioStopped: ((UInt8 /* reason */) -> Void)?
+    /// First decoded audio frame of the current stream. An AUDIO_START ack
+    /// alone does not prove the remote's microphone is actually capturing.
+    var onFirstAudioFrame: (() -> Void)?
     var onMicrophoneOpenFailed: ((UInt16 /* code */) -> Void)?
     /// Called when the device connection state changes.
     var onConnectionChanged: ((Bool) -> Void)?
@@ -63,6 +66,7 @@ final class BLEBridge: NSObject {
     private var levelLogAt = Date.distantPast
     private var diagFrameCount = 0
     private var streamFrameCount = 0
+    private var streamStartedAt = Date.distantPast
     private var streamSampleCount = 0
     private var streamPeak = 0
     private var streamSumSquares: Int64 = 0
@@ -608,6 +612,7 @@ extension BLEBridge: CBPeripheralDelegate {
             onAudioStarted?(reason, codec.sampleRate)
             diagFrameCount = 0
             streamFrameCount = 0
+            streamStartedAt = Date()
             streamSampleCount = 0
             streamPeak = 0
             streamSumSquares = 0
@@ -720,13 +725,23 @@ extension BLEBridge: CBPeripheralDelegate {
             $0 += Int64($1) * Int64($1)
         }
         streamFrameCount += 1
+        if streamFrameCount == 1 {
+            onFirstAudioFrame?()
+        }
         streamSampleCount += frame.samples.count
         streamPeak = max(streamPeak, framePeak)
         streamSumSquares += frameSumSquares
         streamClippedSampleCount += frame.samples.reduce(into: 0) {
             if abs(Int($1)) >= 32_760 { $0 += 1 }
         }
-        if streamFrameCount == 1 || streamFrameCount.isMultiple(of: 200) {
+        if streamFrameCount == 1 {
+            let latency = Date().timeIntervalSince(streamStartedAt) * 1000
+            print(
+                "[\(logTag)] AUDIO_FRAMES count=1 " +
+                "samples=\(streamSampleCount) recentPeak=\(framePeak) " +
+                "firstFrameMs=\(Int(latency.rounded()))"
+            )
+        } else if streamFrameCount.isMultiple(of: 200) {
             print(
                 "[\(logTag)] AUDIO_FRAMES count=\(streamFrameCount) " +
                 "samples=\(streamSampleCount) recentPeak=\(framePeak)"
