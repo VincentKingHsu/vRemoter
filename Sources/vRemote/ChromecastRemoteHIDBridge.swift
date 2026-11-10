@@ -105,7 +105,20 @@ final class ChromecastRemoteHIDBridge {
         let openOptions = remappingEnabled
             ? IOOptionBits(kIOHIDOptionsTypeSeizeDevice)
             : IOOptionBits(kIOHIDOptionsTypeNone)
-        let result = IOHIDManagerOpen(manager, openOptions)
+        var result = IOHIDManagerOpen(manager, openOptions)
+        if result == kIOReturnNotPrivileged, remappingEnabled {
+            // macOS only lets privileged clients seize HID devices whose
+            // primary usage is a keyboard. Keep mapping alive in shared mode;
+            // the remote's native actions are then no longer suppressed.
+            print(
+                "[CAST-HID] seize not permitted; " +
+                "falling back to shared mode (native actions not suppressed)"
+            )
+            result = IOHIDManagerOpen(
+                manager,
+                IOOptionBits(kIOHIDOptionsTypeNone)
+            )
+        }
         guard result == kIOReturnSuccess else {
             print(
                 "[CAST-HID] manager open failed: " +
