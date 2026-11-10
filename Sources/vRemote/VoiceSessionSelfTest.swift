@@ -6,6 +6,7 @@ enum VoiceSessionSelfTest {
     private final class FakeDoubaoState: DoubaoAudioStateProviding {
         var onSnapshotChanged: ((DoubaoAudioStateMonitor.Snapshot) -> Void)?
         private(set) var snapshot: DoubaoAudioStateMonitor.Snapshot
+        var activeHostTitle: String? { "豆包输入法" }
 
         init(state: DoubaoAudioStateMonitor.State = .inactive) {
             snapshot = Self.makeSnapshot(state)
