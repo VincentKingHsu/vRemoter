@@ -536,7 +536,7 @@ final class RemoteMappingStore: ObservableObject {
             } else if value == .mouseScroll {
                 // 滚动只在按下/连发 tick 产生事件，松手无动作。
                 if isDown {
-                    scrollConfig(for: button, remote: remote)?.post(isDown: true)
+                    scrollConfig(for: button, remote: remote).post(isDown: true)
                 }
             } else {
                 value.post(isDown: isDown)
@@ -548,21 +548,32 @@ final class RemoteMappingStore: ObservableObject {
               supportsRepeat(target(for: button, remote: remote))
         else { return }
 
-        let tick: (Bool) -> Void = { [weak self] isInitial in
-            guard let self, self.repeatTimers[key]?.isCancelled != true else { return }
+        /// 每条连发链用一个专属 token 作为生命周期标记：
+        /// cancelRepeat 取消并移除它后，整条链（含已排队的 tick）立即停下；
+        /// 连续按下时旧链拿到的是已被取消的旧 token，不会与新链叠加。
+        let token = DispatchWorkItem {}
+        repeatTimers[key] = token
+
+        var tick: ((Bool) -> Void)!
+        tick = { [weak self] isInitial in
+            guard let self, !token.isCancelled else {
+                tick = nil
+                return
+            }
             guard AppSwitcherSession.shared.isActive == false else {
                 self.cancelRepeat(for: key)
+                tick = nil
                 return
             }
             if !isInitial { pressOnce(isDown: true) }
+            let next = DispatchWorkItem { tick(false) }
             DispatchQueue.main.asyncAfter(
                 deadline: .now() + (isInitial
                     ? Self.repeatInitialDelay
                     : Self.repeatInterval),
-                execute: DispatchWorkItem { tick(false) }
+                execute: next
             )
         }
-        repeatTimers[key] = DispatchWorkItem {}
         tick(true)
     }
 
