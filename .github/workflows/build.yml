@@ -1,0 +1,30 @@
+name: Build
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Self tests
+        run: Scripts/run-self-tests.sh
+
+      - name: Build (release)
+        run: swift build -c release --disable-sandbox
+
+      - name: Package DMG
+        run: Scripts/build-dmg.sh
+
+      - name: Upload DMG artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: vRemoter-dmg
+          path: dist/*.dmg
+          if-no-files-found: error

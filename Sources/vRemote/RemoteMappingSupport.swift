@@ -123,9 +123,16 @@ enum RemoteMappingTarget: String, CaseIterable, Identifiable, Codable, Hashable 
     case lockScreen
     case sleep
     case appSwitcher
+    case mouseScrollUp
+    case mouseScrollDown
     case custom
 
     var id: String { rawValue }
+
+    /// 鼠标滚动类目标（上 / 下）。
+    var isMouseScroll: Bool {
+        self == .mouseScrollUp || self == .mouseScrollDown
+    }
 
     var title: String {
         switch self {
@@ -156,6 +163,8 @@ enum RemoteMappingTarget: String, CaseIterable, Identifiable, Codable, Hashable 
         case .lockScreen: L10n.text("锁屏", "Lock Screen")
         case .sleep: L10n.text("睡眠", "Sleep")
         case .appSwitcher: L10n.text("切换应用", "App Switcher")
+        case .mouseScrollUp: L10n.text("鼠标滚动-上", "Mouse Scroll Up")
+        case .mouseScrollDown: L10n.text("鼠标滚动-下", "Mouse Scroll Down")
         case .custom: L10n.text("录制任意按键…", "Record a key…")
         }
     }
@@ -263,6 +272,35 @@ struct RemoteCustomShortcut: Codable, Hashable {
     }
 }
 
+/// 鼠标滚动映射配置：方向（正=向上 / 负=向下）与单次滚动量（行）。
+struct RemoteScrollConfig: Codable, Hashable {
+    let up: Bool
+    let amount: Int32
+
+    var label: String {
+        let arrow = up ? "↑" : "↓"
+        return L10n.text(
+            "滚动\(arrow)\(amount) 行",
+            "Scroll \(arrow)\(amount) line(s)"
+        )
+    }
+
+    /// 连发 tick 与按下各发一次滚轮事件；松手无动作。
+    func post(isDown: Bool) {
+        guard isDown, amount != 0 else { return }
+        guard let event = CGEvent(
+            scrollWheelEvent2Source: CGEventSource(stateID: .hidSystemState),
+            units: .line,
+            wheelCount: 1,
+            wheel1: up ? amount : -amount,
+            wheel2: 0,
+            wheel3: 0
+        ) else { return }
+        event.setIntegerValueField(.eventSourceUserData, value: Key.syntheticMarker)
+        event.post(tap: .cghidEventTap)
+    }
+}
+
 /// 切换应用会话：⌘ 虚拟按住 + Tab 发射 + 1s 倒计时自动收尾。
 /// 不依赖长按松手边沿，X6 / Chromecast 共用同一交互。
 ///
@@ -359,6 +397,7 @@ final class RemoteMappingStore: ObservableObject {
     private let prefix = "remoteMapping."
     private let enabledPrefix = "remoteMappingEnabled."
     private let customPrefix = "remoteCustomMapping."
+    private let scrollPrefix = "remoteScrollMapping."
 
     private init() {}
 
@@ -418,6 +457,31 @@ final class RemoteMappingStore: ObservableObject {
         }
     }
 
+    func scrollConfig(
+        for button: RemoteButtonDefinition,
+        remote: SupportedRemoteID
+    ) -> RemoteScrollConfig {
+        let key = scrollPrefix + remote.rawValue + "." + button.id
+        guard let data = defaults.data(forKey: key),
+              let config = try? JSONDecoder().decode(
+                RemoteScrollConfig.self, from: data
+              )
+        else { return RemoteScrollConfig(up: false, amount: 3) }
+        return config
+    }
+
+    func setScrollConfig(
+        _ config: RemoteScrollConfig,
+        for button: RemoteButtonDefinition,
+        remote: SupportedRemoteID
+    ) {
+        guard !button.voiceControlled, button.remappable else { return }
+        if let data = try? JSONEncoder().encode(config) {
+            defaults.set(data, forKey: scrollPrefix + remote.rawValue + "." + button.id)
+        }
+        revision += 1
+    }
+
     func targetTitle(
         for button: RemoteButtonDefinition,
         remote: SupportedRemoteID
@@ -427,7 +491,31 @@ final class RemoteMappingStore: ObservableObject {
            let shortcut = customShortcut(for: button, remote: remote) {
             return shortcut.label
         }
+        if value.isMouseScroll {
+            return value.title
+        }
         return value.title
+    }
+
+    /// 长按自动连发：合成 CGEvent 不会像物理键盘那样被 macOS 自动重复，
+    /// 遥控器也不发 HID repeat 报告，因此按住时由 app 层重发 keyDown。
+    /// 用 GCD 主队列（同 AppSwitcherSession 的原因：HID 回调在后台线程，
+    /// Timer 在后台 RunLoop 不会触发）。
+    private struct RepeatKey: Hashable {
+        let remote: SupportedRemoteID
+        let buttonID: String
+    }
+    private static let repeatInitialDelay: TimeInterval = 0.5
+    private static let repeatInterval: TimeInterval = 0.06
+    private var repeatTimers: [RepeatKey: DispatchWorkItem] = [:]
+
+    private func cancelRepeat(for key: RepeatKey) {
+        repeatTimers.removeValue(forKey: key)?.cancel()
+    }
+
+    /// 键盘类目标（方向键 / Return / 自定义快捷键 / 鼠标滚动）支持长按连发。
+    private func supportsRepeat(_ target: RemoteMappingTarget) -> Bool {
+        target.keyboard != nil || target == .custom || target.isMouseScroll
     }
 
     func post(
@@ -435,20 +523,69 @@ final class RemoteMappingStore: ObservableObject {
         remote: SupportedRemoteID,
         isDown: Bool
     ) {
-        let value = target(for: button, remote: remote)
-        // 切换器会话期间：方向键左右重定向为 Tab / Shift+Tab（仅 keyDown 生效）。
-        if AppSwitcherSession.shared.isActive,
-           value == .arrowLeft || value == .arrowRight {
-            if isDown {
-                AppSwitcherSession.shared.redirectArrow(isRight: value == .arrowRight)
+        let key = RepeatKey(remote: remote, buttonID: button.id)
+        cancelRepeat(for: key)
+
+        /// 触发一次按下动作。松手边沿传 isDown=false（连发只重发 keyDown）。
+        func pressOnce(isDown: Bool) {
+            let value = target(for: button, remote: remote)
+            // 切换器会话期间：方向键左右重定向为 Tab / Shift+Tab（仅 keyDown 生效）。
+            // 连发定时器撞上会话时直接跳过，避免长按方向键在切换器里狂发 Tab。
+            if AppSwitcherSession.shared.isActive,
+               value == .arrowLeft || value == .arrowRight {
+                if isDown {
+                    AppSwitcherSession.shared.redirectArrow(isRight: value == .arrowRight)
+                }
+                return
             }
-            return
+            if value == .custom {
+                customShortcut(for: button, remote: remote)?.post(isDown: isDown)
+            } else if value.isMouseScroll {
+                // 滚动只在按下/连发 tick 产生事件，松手无动作。
+                // 方向由目标（上/下）决定，不再有二级配置。
+                if isDown {
+                    RemoteScrollConfig(
+                        up: value == .mouseScrollUp,
+                        amount: scrollConfig(for: button, remote: remote).amount
+                    ).post(isDown: true)
+                }
+            } else {
+                value.post(isDown: isDown)
+            }
         }
-        if value == .custom {
-            customShortcut(for: button, remote: remote)?.post(isDown: isDown)
-        } else {
-            value.post(isDown: isDown)
+
+        pressOnce(isDown: isDown)
+        guard isDown,
+              supportsRepeat(target(for: button, remote: remote))
+        else { return }
+
+        /// 每条连发链用一个专属 token 作为生命周期标记：
+        /// cancelRepeat 取消并移除它后，整条链（含已排队的 tick）立即停下；
+        /// 连续按下时旧链拿到的是已被取消的旧 token，不会与新链叠加。
+        let token = DispatchWorkItem {}
+        repeatTimers[key] = token
+
+        var tick: ((Bool) -> Void)!
+        tick = { [weak self] isInitial in
+            guard let self, !token.isCancelled else {
+                tick = nil
+                return
+            }
+            guard AppSwitcherSession.shared.isActive == false else {
+                self.cancelRepeat(for: key)
+                tick = nil
+                return
+            }
+            if !isInitial { pressOnce(isDown: true) }
+            let next = DispatchWorkItem { tick(false) }
+            DispatchQueue.main.asyncAfter(
+                deadline: .now() + (isInitial
+                    ? Self.repeatInitialDelay
+                    : Self.repeatInterval),
+                execute: next
+            )
         }
+        tick(true)
     }
 
     func reset(_ remote: SupportedRemoteID) {
@@ -458,6 +595,9 @@ final class RemoteMappingStore: ObservableObject {
             )
             defaults.removeObject(
                 forKey: customPrefix + remote.rawValue + "." + button.id
+            )
+            defaults.removeObject(
+                forKey: scrollPrefix + remote.rawValue + "." + button.id
             )
         }
         revision += 1
