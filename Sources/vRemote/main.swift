@@ -47,7 +47,8 @@ final class AppController: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private let x6SearchSuppressor = X6SearchSuppressor()
     private let doubaoAudioState = DoubaoAudioStateMonitor()
     private lazy var x6Session = X6SessionCoordinator(
-        doubaoState: doubaoAudioState
+        doubaoState: doubaoAudioState,
+        compatibility: { DoubaoAudioStateMonitor.sessionCompatibilityActive }
     )
     private let debugWindow = DebugWindowController()
     private let updateWindow = UpdateWindowController()
@@ -484,11 +485,24 @@ final class AppController: NSObject, NSApplicationDelegate, NSMenuDelegate {
         let anyBLE = x6BLEConnected || chromecastBLEConnected
         let doubaoSnapshot = doubaoAudioState.snapshotNow()
         let doubaoUsesVRemote = doubaoSnapshot.inputDeviceNames.contains("vRemoteDr 2ch")
+        let hostLabel = doubaoAudioState.activeHostTitle
+            ?? L10n.text("输入法", "Input method")
+        // WeChat Input Method has no microphone picker and records from the
+        // system default input device, so the virtual device has to be selected
+        // there before the remote audio can reach it.
+        let needsDefaultInputDevice =
+            doubaoAudioState.activeHostBundleID == VoiceInputHost.weType.bundleIDs.first
+            && AudioPipe.defaultInputDeviceName() != "vRemoteDr 2ch"
         let statusText: String
         if doubaoSnapshot.isRecording && !doubaoUsesVRemote {
-            statusText = L10n.text("豆包输入设备错误", "Incorrect Doubao input")
+            statusText = "\(hostLabel) · " + L10n.text("输入设备错误", "wrong input device")
         } else if remoteStreaming {
             statusText = L10n.text("遥控器录音中", "Remote recording")
+        } else if needsDefaultInputDevice {
+            statusText = L10n.text(
+                "请把系统输入设备设为 vRemoteDr 2ch",
+                "Set system input to vRemoteDr 2ch"
+            )
         } else if anyHID && anyBLE {
             statusText = L10n.text("已就绪", "Ready")
         } else if anyHID || anyBLE {
@@ -547,6 +561,12 @@ final class AppController: NSObject, NSApplicationDelegate, NSMenuDelegate {
         }
         debugWindow.onInputTriggerChanged = { [weak self] in
             self?.x6SearchSuppressor.triggerConfigurationDidChange()
+        }
+        debugWindow.onVoiceInputHostChanged = { [weak self] in
+            // The monitored bundle IDs changed; re-read immediately so the
+            // status line names the newly selected input method.
+            _ = self?.doubaoAudioState.snapshotNow()
+            self?.updateStatus()
         }
         debugWindow.onRemoteMappingEnabledChanged = { [weak self] remote, enabled in
             switch remote {

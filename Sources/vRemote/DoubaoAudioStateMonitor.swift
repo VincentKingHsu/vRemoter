@@ -31,13 +31,53 @@ final class DoubaoAudioStateMonitor {
         }
     }
 
-    private static let targetBundleID = "com.bytedance.inputmethod.doubaoime"
     private static let targetDeviceName = "vRemoteDr 2ch"
 
+    /// Whether the macOS 14.2+ per-process capture API actually works on this
+    /// system. The constants are present in older SDKs, but on macOS 13 the
+    /// queries fail, so this is probed once against our own process.
+    static let processAudioAPISupported: Bool = {
+        let objectID = processObject(
+            for: ProcessInfo.processInfo.processIdentifier
+        )
+        guard objectID != kAudioObjectUnknown else { return false }
+        return uint32Property(
+            object: objectID,
+            selector: kAudioProcessPropertyIsRunningInput,
+            scope: kAudioObjectPropertyScopeGlobal
+        ) != nil
+    }()
+
+    /// Compatibility mode drives the voice session purely from remote and
+    /// keyboard trigger events, because per-process capture detection is
+    /// unavailable (macOS < 14.2). An explicit user default overrides the
+    /// runtime probe.
+    static var sessionCompatibilityActive: Bool {
+        if UserDefaults.standard.object(forKey: AppStorage.voiceCompatibilityKey) != nil {
+            return UserDefaults.standard.bool(forKey: AppStorage.voiceCompatibilityKey)
+        }
+        return !processAudioAPISupported
+    }
+
+    /// One CoreAudio process object per monitored input-method bundle ID.
+    private struct Binding {
+        let pid: pid_t
+        let objectID: AudioObjectID
+    }
+
     private var started = false
-    private var processObjectID = AudioObjectID(kAudioObjectUnknown)
-    private var processPID: pid_t?
+    private var bindings = [String: Binding]()
+    private var monitoredBundleIDs = [String]()
     private var lastSnapshot: Snapshot?
+    private var compatPollTimer: Timer?
+
+    /// Bundle ID of the input method that produced the current snapshot, when
+    /// one is bound. Used for diagnostics and for the status line.
+    private(set) var activeHostBundleID: String?
+
+    var activeHostTitle: String? {
+        activeHostBundleID.flatMap(VoiceInputHost.title(forBundleID:))
+    }
 
     var onSnapshotChanged: ((Snapshot) -> Void)?
 
@@ -59,6 +99,22 @@ final class DoubaoAudioStateMonitor {
         guard !started else { return }
         started = true
 
+        guard !Self.sessionCompatibilityActive else {
+            print(
+                "[DOUBAO-STATE] 兼容模式：进程级 CoreAudio 检测不可用，" +
+                "改为输入法进程存在性 + 按键事件驱动"
+            )
+            let timer = Timer(timeInterval: 2.0, repeats: true) { [weak self] _ in
+                DispatchQueue.main.async {
+                    self?.publishCurrentSnapshot(force: false)
+                }
+            }
+            RunLoop.main.add(timer, forMode: .common)
+            compatPollTimer = timer
+            publishCurrentSnapshot(force: true)
+            return
+        }
+
         var address = Self.processListAddress
         let status = AudioObjectAddPropertyListenerBlock(
             AudioObjectID(kAudioObjectSystemObject),
@@ -75,7 +131,9 @@ final class DoubaoAudioStateMonitor {
     func stop() {
         guard started else { return }
         started = false
-        unbindProcessObject()
+        compatPollTimer?.invalidate()
+        compatPollTimer = nil
+        unbindAll()
 
         var address = Self.processListAddress
         AudioObjectRemovePropertyListenerBlock(
@@ -87,54 +145,64 @@ final class DoubaoAudioStateMonitor {
         lastSnapshot = nil
     }
 
-    /// Synchronous pre-event snapshot. The Option event tap calls this before
-    /// the key event reaches Doubao, so the returned value is the old state
-    /// that the Option press is about to toggle.
+    /// Synchronous pre-event snapshot. The trigger event tap calls this before
+    /// the key event reaches the input method, so the returned value is the old
+    /// state that the trigger press is about to toggle.
     func snapshotNow() -> Snapshot {
-        refreshBindingIfNeeded()
+        if Self.sessionCompatibilityActive {
+            return readCompatSnapshot()
+        }
+        refreshBindingsIfNeeded()
         return readCurrentSnapshot()
     }
 
     private func refreshBindingAndPublish(force: Bool) {
-        refreshBindingIfNeeded()
+        refreshBindingsIfNeeded()
         publishCurrentSnapshot(force: force)
     }
 
-    private func refreshBindingIfNeeded() {
-        let app = NSRunningApplication.runningApplications(
-            withBundleIdentifier: Self.targetBundleID
-        ).first { !$0.isTerminated }
+    private func refreshBindingsIfNeeded() {
+        let wanted = AppStorage.voiceInputHost.bundleIDs
+        if wanted != monitoredBundleIDs {
+            print("[DOUBAO-STATE] 监听目标变更 \(monitoredBundleIDs) → \(wanted)")
+            unbindAll()
+            monitoredBundleIDs = wanted
+        }
 
-        guard let app else {
-            if processObjectID != kAudioObjectUnknown {
-                unbindProcessObject()
+        var live = Set<String>()
+        for bundleID in monitoredBundleIDs {
+            guard let app = NSRunningApplication.runningApplications(
+                withBundleIdentifier: bundleID
+            ).first(where: { !$0.isTerminated }) else { continue }
+
+            let pid = app.processIdentifier
+            let objectID = Self.processObject(for: pid)
+            guard objectID != kAudioObjectUnknown else { continue }
+
+            live.insert(bundleID)
+            if let existing = bindings[bundleID] {
+                if existing.objectID == objectID { continue }
+                removeListeners(for: existing.objectID)
             }
-            processPID = nil
-            return
+            addListeners(for: objectID)
+            bindings[bundleID] = Binding(pid: pid, objectID: objectID)
+            print(
+                "[DOUBAO-STATE] 已绑定 \(bundleID) pid=\(pid) " +
+                "audioProcess=\(objectID)"
+            )
         }
 
-        let pid = app.processIdentifier
-        let translated = Self.processObject(for: pid)
-        guard translated != kAudioObjectUnknown else {
-            if processObjectID != kAudioObjectUnknown {
-                unbindProcessObject()
-            }
-            processPID = pid
-            return
+        for (bundleID, binding) in bindings where !live.contains(bundleID) {
+            removeListeners(for: binding.objectID)
+            bindings.removeValue(forKey: bundleID)
+            print("[DOUBAO-STATE] 已解绑 \(bundleID)")
         }
+    }
 
-        guard translated != processObjectID else {
-            processPID = pid
-            return
-        }
-
-        unbindProcessObject()
-        processObjectID = translated
-        processPID = pid
-
+    private func addListeners(for objectID: AudioObjectID) {
         var runningAddress = Self.runningInputAddress
         let runningStatus = AudioObjectAddPropertyListenerBlock(
-            translated,
+            objectID,
             &runningAddress,
             .main,
             inputStateListener
@@ -142,36 +210,43 @@ final class DoubaoAudioStateMonitor {
 
         var devicesAddress = Self.inputDevicesAddress
         let devicesStatus = AudioObjectAddPropertyListenerBlock(
-            translated,
+            objectID,
             &devicesAddress,
             .main,
             inputStateListener
         )
 
-        print(
-            "[DOUBAO-STATE] 已绑定 pid=\(pid) audioProcess=\(translated) " +
-            "listeners=\(Self.describe(runningStatus))/\(Self.describe(devicesStatus))"
-        )
+        if runningStatus != noErr || devicesStatus != noErr {
+            print(
+                "[DOUBAO-STATE] 监听注册异常 " +
+                "\(Self.describe(runningStatus))/\(Self.describe(devicesStatus))"
+            )
+        }
     }
 
-    private func unbindProcessObject() {
-        guard processObjectID != kAudioObjectUnknown else { return }
+    private func removeListeners(for objectID: AudioObjectID) {
         var runningAddress = Self.runningInputAddress
         AudioObjectRemovePropertyListenerBlock(
-            processObjectID,
+            objectID,
             &runningAddress,
             .main,
             inputStateListener
         )
         var devicesAddress = Self.inputDevicesAddress
         AudioObjectRemovePropertyListenerBlock(
-            processObjectID,
+            objectID,
             &devicesAddress,
             .main,
             inputStateListener
         )
-        processObjectID = AudioObjectID(kAudioObjectUnknown)
-        processPID = nil
+    }
+
+    private func unbindAll() {
+        for binding in bindings.values {
+            removeListeners(for: binding.objectID)
+        }
+        bindings.removeAll()
+        activeHostBundleID = nil
     }
 
     private func publishCurrentSnapshot(force: Bool) {
@@ -188,50 +263,97 @@ final class DoubaoAudioStateMonitor {
            !snapshot.inputDeviceNames.contains(Self.targetDeviceName)
         {
             print(
-                "[DOUBAO-STATE] ⚠️ 豆包正在录音，但实际输入不是 " +
-                Self.targetDeviceName
+                "[DOUBAO-STATE] 警告：\(activeHostTitle ?? "输入法")正在录音，" +
+                "但实际输入不是 \(Self.targetDeviceName)"
             )
         }
         onSnapshotChanged?(snapshot)
     }
 
     private func readCurrentSnapshot() -> Snapshot {
-        guard processObjectID != kAudioObjectUnknown else {
+        if Self.sessionCompatibilityActive {
+            return readCompatSnapshot()
+        }
+
+        guard !bindings.isEmpty else {
+            activeHostBundleID = nil
+            return emptySnapshot(state: .unavailable)
+        }
+
+        // Adopt whichever host is genuinely recording. Iterating in configured
+        // order keeps the choice stable when several hosts are merely idle.
+        var idle: (String, Binding, [AudioDeviceID])?
+        for bundleID in monitoredBundleIDs {
+            guard let binding = bindings[bundleID] else { continue }
+            guard let running = Self.uint32Property(
+                object: binding.objectID,
+                selector: kAudioProcessPropertyIsRunningInput,
+                scope: kAudioObjectPropertyScopeGlobal
+            ) else { continue }
+
+            let deviceIDs = Self.objectListProperty(
+                object: binding.objectID,
+                selector: kAudioProcessPropertyDevices,
+                scope: kAudioObjectPropertyScopeInput
+            )
+
+            if running != 0 {
+                activeHostBundleID = bundleID
+                return Snapshot(
+                    state: .active,
+                    pid: binding.pid,
+                    processObjectID: binding.objectID,
+                    inputDeviceIDs: deviceIDs,
+                    inputDeviceNames: deviceIDs.map(Self.deviceName)
+                )
+            }
+            if idle == nil { idle = (bundleID, binding, deviceIDs) }
+        }
+
+        guard let (bundleID, binding, deviceIDs) = idle else {
+            activeHostBundleID = nil
+            return emptySnapshot(state: .unavailable)
+        }
+
+        activeHostBundleID = bundleID
+        return Snapshot(
+            state: .inactive,
+            pid: binding.pid,
+            processObjectID: binding.objectID,
+            inputDeviceIDs: deviceIDs,
+            inputDeviceNames: deviceIDs.map(Self.deviceName)
+        )
+    }
+
+    /// Compatibility snapshot: on systems without the per-process capture API,
+    /// "ready" can only mean the input-method process is alive. Whether it is
+    /// actually capturing is unknowable, so the state machine must never use
+    /// `.inactive` to close an open session.
+    private func readCompatSnapshot() -> Snapshot {
+        for bundleID in AppStorage.voiceInputHost.bundleIDs {
+            guard let app = NSRunningApplication.runningApplications(
+                withBundleIdentifier: bundleID
+            ).first(where: { !$0.isTerminated }) else { continue }
+            activeHostBundleID = bundleID
             return Snapshot(
-                state: .unavailable,
-                pid: processPID,
+                state: .inactive,
+                pid: app.processIdentifier,
                 processObjectID: nil,
                 inputDeviceIDs: [],
                 inputDeviceNames: []
             )
         }
+        activeHostBundleID = nil
+        return emptySnapshot(state: .unavailable)
+    }
 
-        guard let running = Self.uint32Property(
-            object: processObjectID,
-            selector: kAudioProcessPropertyIsRunningInput,
-            scope: kAudioObjectPropertyScopeGlobal
-        ) else {
-            return Snapshot(
-                state: .unavailable,
-                pid: processPID,
-                processObjectID: processObjectID,
-                inputDeviceIDs: [],
-                inputDeviceNames: []
-            )
-        }
-
-        let deviceIDs = Self.objectListProperty(
-            object: processObjectID,
-            selector: kAudioProcessPropertyDevices,
-            scope: kAudioObjectPropertyScopeInput
-        )
-        let names = deviceIDs.map(Self.deviceName)
-        return Snapshot(
-            state: running == 0 ? .inactive : .active,
-            pid: processPID,
-            processObjectID: processObjectID,
-            inputDeviceIDs: deviceIDs,
-            inputDeviceNames: names
+    private func emptySnapshot(state: State) -> Snapshot {
+        Snapshot(
+            state: state,
+            pid: nil,
+            processObjectID: nil,
+            inputDeviceIDs: [],
+            inputDeviceNames: []
         )
     }
 

@@ -623,22 +623,47 @@ final class AudioPipe: NSObject, AVCaptureAudioDataOutputSampleBufferDelegate {
         ) == noErr else { return nil }
 
         for id in devices where id != 0 {
-            var nameRef: Unmanaged<CFString>?
-            var nameSize = UInt32(MemoryLayout<Unmanaged<CFString>?>.size)
-            var nameAddress = AudioObjectPropertyAddress(
-                mSelector: kAudioObjectPropertyName,
-                mScope: kAudioObjectPropertyScopeGlobal,
-                mElement: kAudioObjectPropertyElementMain
-            )
-            guard AudioObjectGetPropertyData(
-                id, &nameAddress, 0, nil, &nameSize, &nameRef
-            ) == noErr else { continue }
-            guard let name = nameRef?.takeRetainedValue() as String? else { continue }
+            guard let name = deviceName(of: id) else { continue }
             if name.caseInsensitiveCompare(targetName) == .orderedSame {
                 return id
             }
         }
         return nil
+    }
+
+    // MARK: - System default input device
+
+    /// WeChat Input Method ships no in-app microphone picker: its recorder uses
+    /// `AVAudioEngine`'s input node, which follows the system default input
+    /// device. Reusing the vRemoteDr capture stream with it therefore requires
+    /// the user to point the system default at `vRemoteDr 2ch`.
+    static func defaultInputDeviceName() -> String? {
+        var address = AudioObjectPropertyAddress(
+            mSelector: kAudioHardwarePropertyDefaultInputDevice,
+            mScope: kAudioObjectPropertyScopeGlobal,
+            mElement: kAudioObjectPropertyElementMain
+        )
+        var deviceID = AudioDeviceID(0)
+        var size = UInt32(MemoryLayout<AudioDeviceID>.size)
+        guard AudioObjectGetPropertyData(
+            AudioObjectID(kAudioObjectSystemObject),
+            &address, 0, nil, &size, &deviceID
+        ) == noErr, deviceID != 0 else { return nil }
+        return deviceName(of: deviceID)
+    }
+
+    static func deviceName(of deviceID: AudioDeviceID) -> String? {
+        var nameRef: Unmanaged<CFString>?
+        var nameSize = UInt32(MemoryLayout<Unmanaged<CFString>?>.size)
+        var nameAddress = AudioObjectPropertyAddress(
+            mSelector: kAudioObjectPropertyName,
+            mScope: kAudioObjectPropertyScopeGlobal,
+            mElement: kAudioObjectPropertyElementMain
+        )
+        guard AudioObjectGetPropertyData(
+            deviceID, &nameAddress, 0, nil, &nameSize, &nameRef
+        ) == noErr else { return nil }
+        return nameRef?.takeRetainedValue() as String?
     }
 
     // MARK: - Diagnostics
