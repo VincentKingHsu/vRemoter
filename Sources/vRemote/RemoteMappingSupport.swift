@@ -123,16 +123,15 @@ enum RemoteMappingTarget: String, CaseIterable, Identifiable, Codable, Hashable 
     case lockScreen
     case sleep
     case appSwitcher
-    case mouseScroll
     case mouseScrollUp
     case mouseScrollDown
     case custom
 
     var id: String { rawValue }
 
-    /// 鼠标滚动类目标（含旧配置兼容的 mouseScroll）。
+    /// 鼠标滚动类目标（上 / 下）。
     var isMouseScroll: Bool {
-        self == .mouseScroll || self == .mouseScrollUp || self == .mouseScrollDown
+        self == .mouseScrollUp || self == .mouseScrollDown
     }
 
     var title: String {
@@ -164,7 +163,6 @@ enum RemoteMappingTarget: String, CaseIterable, Identifiable, Codable, Hashable 
         case .lockScreen: L10n.text("锁屏", "Lock Screen")
         case .sleep: L10n.text("睡眠", "Sleep")
         case .appSwitcher: L10n.text("切换应用", "App Switcher")
-        case .mouseScroll: L10n.text("鼠标滚动…", "Mouse Scroll…")
         case .mouseScrollUp: L10n.text("鼠标滚动-上", "Mouse Scroll Up")
         case .mouseScrollDown: L10n.text("鼠标滚动-下", "Mouse Scroll Down")
         case .custom: L10n.text("录制任意按键…", "Record a key…")
@@ -422,12 +420,6 @@ final class RemoteMappingStore: ObservableObject {
         guard let raw = defaults.string(forKey: key),
               let target = RemoteMappingTarget(rawValue: raw)
         else { return button.defaultTarget }
-        // 旧版「鼠标滚动…」按当时保存的方向拆成两个新目标
-        if target == .mouseScroll {
-            return scrollConfig(for: button, remote: remote).up
-                ? .mouseScrollUp
-                : .mouseScrollDown
-        }
         return target
     }
 

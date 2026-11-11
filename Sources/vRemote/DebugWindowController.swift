@@ -1112,10 +1112,7 @@ private struct MappingRow: View {
                             }
                         )
                     ) {
-                        // .mouseScroll 仅供旧配置解码迁移，不再作为可选项
-                        ForEach(RemoteMappingTarget.allCases.filter {
-                            $0 != .doubaoVoice && $0 != .mouseScroll
-                        }) { target in
+                        ForEach(RemoteMappingTarget.allCases.filter { $0 != .doubaoVoice }) { target in
                             Text(target == .custom
                                 ? customMenuTitle
                                 : target.title
