@@ -1112,7 +1112,10 @@ private struct MappingRow: View {
                             }
                         )
                     ) {
-                        ForEach(RemoteMappingTarget.allCases.filter { $0 != .doubaoVoice }) { target in
+                        // .mouseScroll 仅供旧配置解码迁移，不再作为可选项
+                        ForEach(RemoteMappingTarget.allCases.filter {
+                            $0 != .doubaoVoice && $0 != .mouseScroll
+                        }) { target in
                             Text(target == .custom
                                 ? customMenuTitle
                                 : target.title
@@ -1128,9 +1131,6 @@ private struct MappingRow: View {
                         .buttonStyle(.plain)
                         .foregroundStyle(ConsoleTheme.green)
                         .help(L10n.text("重新录制按键", "Record again"))
-                    }
-                    if mappings.target(for: button, remote: remote) == .mouseScroll {
-                        ScrollConfigControls(remote: remote, button: button)
                     }
                 }
             }
@@ -1167,64 +1167,6 @@ private struct MappingRow: View {
             )
         }
         return L10n.text("自定义…", "Custom…")
-    }
-}
-
-/// 「鼠标滚动」行内配置：方向（上/下）+ 单次滚动量（行）。
-private struct ScrollConfigControls: View {
-    @ObservedObject private var mappings = RemoteMappingStore.shared
-    let remote: SupportedRemoteID
-    let button: RemoteButtonDefinition
-
-    private var config: RemoteScrollConfig {
-        mappings.scrollConfig(for: button, remote: remote)
-    }
-
-    private func update(up: Bool? = nil, amount: Int32? = nil) {
-        mappings.setScrollConfig(
-            RemoteScrollConfig(
-                up: up ?? config.up,
-                amount: amount ?? config.amount
-            ),
-            for: button,
-            remote: remote
-        )
-    }
-
-    var body: some View {
-        HStack(spacing: 4) {
-            Picker(
-                L10n.text("滚动方向", "Scroll direction"),
-                selection: Binding(
-                    get: { config.up },
-                    set: { update(up: $0) }
-                )
-            ) {
-                Text(L10n.text("上", "Up")).tag(true)
-                Text(L10n.text("下", "Down")).tag(false)
-            }
-            .labelsHidden()
-            .frame(width: 52)
-
-            TextField(
-                L10n.text("滚动量", "Scroll amount"),
-                value: Binding(
-                    get: { Int(config.amount) },
-                    set: {
-                        let clamped = min(max($0, 1), 100)
-                        update(amount: Int32(clamped))
-                    }
-                ),
-                format: .number.grouping(.never)
-            )
-            .textFieldStyle(.roundedBorder)
-            .frame(width: 42)
-            .multilineTextAlignment(.trailing)
-
-            Text(L10n.text("行", "lines"))
-                .font(.system(size: 10.5))
-                .foregroundStyle(ConsoleTheme.tertiary)
-        }
     }
 }
 

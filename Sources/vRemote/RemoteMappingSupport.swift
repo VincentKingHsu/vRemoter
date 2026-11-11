@@ -124,9 +124,16 @@ enum RemoteMappingTarget: String, CaseIterable, Identifiable, Codable, Hashable 
     case sleep
     case appSwitcher
     case mouseScroll
+    case mouseScrollUp
+    case mouseScrollDown
     case custom
 
     var id: String { rawValue }
+
+    /// 鼠标滚动类目标（含旧配置兼容的 mouseScroll）。
+    var isMouseScroll: Bool {
+        self == .mouseScroll || self == .mouseScrollUp || self == .mouseScrollDown
+    }
 
     var title: String {
         switch self {
@@ -158,6 +165,8 @@ enum RemoteMappingTarget: String, CaseIterable, Identifiable, Codable, Hashable 
         case .sleep: L10n.text("睡眠", "Sleep")
         case .appSwitcher: L10n.text("切换应用", "App Switcher")
         case .mouseScroll: L10n.text("鼠标滚动…", "Mouse Scroll…")
+        case .mouseScrollUp: L10n.text("鼠标滚动-上", "Mouse Scroll Up")
+        case .mouseScrollDown: L10n.text("鼠标滚动-下", "Mouse Scroll Down")
         case .custom: L10n.text("录制任意按键…", "Record a key…")
         }
     }
@@ -413,6 +422,12 @@ final class RemoteMappingStore: ObservableObject {
         guard let raw = defaults.string(forKey: key),
               let target = RemoteMappingTarget(rawValue: raw)
         else { return button.defaultTarget }
+        // 旧版「鼠标滚动…」按当时保存的方向拆成两个新目标
+        if target == .mouseScroll {
+            return scrollConfig(for: button, remote: remote).up
+                ? .mouseScrollUp
+                : .mouseScrollDown
+        }
         return target
     }
 
@@ -484,8 +499,8 @@ final class RemoteMappingStore: ObservableObject {
            let shortcut = customShortcut(for: button, remote: remote) {
             return shortcut.label
         }
-        if value == .mouseScroll {
-            return scrollConfig(for: button, remote: remote).label
+        if value.isMouseScroll {
+            return value.title
         }
         return value.title
     }
@@ -508,7 +523,7 @@ final class RemoteMappingStore: ObservableObject {
 
     /// 键盘类目标（方向键 / Return / 自定义快捷键 / 鼠标滚动）支持长按连发。
     private func supportsRepeat(_ target: RemoteMappingTarget) -> Bool {
-        target.keyboard != nil || target == .custom || target == .mouseScroll
+        target.keyboard != nil || target == .custom || target.isMouseScroll
     }
 
     func post(
@@ -533,10 +548,14 @@ final class RemoteMappingStore: ObservableObject {
             }
             if value == .custom {
                 customShortcut(for: button, remote: remote)?.post(isDown: isDown)
-            } else if value == .mouseScroll {
+            } else if value.isMouseScroll {
                 // 滚动只在按下/连发 tick 产生事件，松手无动作。
+                // 方向由目标（上/下）决定，不再有二级配置。
                 if isDown {
-                    scrollConfig(for: button, remote: remote).post(isDown: true)
+                    RemoteScrollConfig(
+                        up: value == .mouseScrollUp,
+                        amount: scrollConfig(for: button, remote: remote).amount
+                    ).post(isDown: true)
                 }
             } else {
                 value.post(isDown: isDown)
