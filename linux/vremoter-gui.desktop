@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=vRemoter
+Name[zh_CN]=vRemoter 遥控器控制台
+Comment=Test, map and record with the Chromecast Voice Remote
+Comment[zh_CN]=测试、映射 Chromecast 语音遥控器并试录音
+Exec=sh -c "/usr/bin/python3 \\$HOME/.local/lib/vremoter/vremoter_gui.py"
+Icon=input-gaming
+Categories=Settings;HardwareSettings;
+Terminal=false

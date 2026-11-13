@@ -1,0 +1,4 @@
+#!/bin/sh
+set -eu
+/usr/bin/vremoter-setup || echo "vRemoter service setup failed; check the console's service status." >&2
+exec /usr/bin/python3 /usr/lib/vremoter/vremoter_gui.py "$@"

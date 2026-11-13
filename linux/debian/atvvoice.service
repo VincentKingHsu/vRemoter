@@ -1,0 +1,12 @@
+[Unit]
+Description=ATVVoice - Chromecast Voice Remote microphone
+After=bluetooth.target
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/atvvoice --name chromecast-remote --gain 12 --highpass 80 --fade-in 200
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=default.target
